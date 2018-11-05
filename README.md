@@ -57,8 +57,8 @@ Macana Plotter:
             Creates a 'corner plot' for the given detector, which includes
             the beammap and 1 dimensional distributions along each axis (azimuth and 
             elevation).  Defaults to the stored detector if none provided.  If saveon is
-            True the image is saved to the specified location.  A filename can be s
-            pecified by the save_name parameter.
+            True the image is saved to the specified location.  A filename can be specified 
+            by the save_name parameter.
         
         make_mosaic_image:  
             Generates a mosaic of the beammaps (signal or weights)
