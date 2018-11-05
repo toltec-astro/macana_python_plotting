@@ -118,5 +118,5 @@ Macana Plotter:
         obs53701.plot_array('Amplitude')
         
     This code is a work-in-progress and will be updated frequently with new 
-    methods for different visual representations and changes to improve 
-    and usability add the support for TolTEC beammap plotting.
+    methods for different visual representations and changes to improve usability and to
+    add the support for TolTEC beammap plotting.
