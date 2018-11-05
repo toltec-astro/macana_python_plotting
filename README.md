@@ -30,9 +30,10 @@ Macana Plotter:
         
         beammap: 
             Get's the beammap Signal or Weight array for the specified detector
-            and stores it in memory.  Can plot if 'plotting' is True.  If saveon is True
-            the image is saved to the specified location.  A filename can be specified
-            by the save_name parameter.
+            and stores it in memory as 'matrix_rot' (rotated 90 degress from the array 
+            in the nc file to match the axes).  Can plot if 'plotting' is True.  If 
+            saveon is True the image is saved to the specified location.  A filename can
+            be specified by the save_name parameter.
         
         get_gauss_params: 
             Get's the fit parameters for a given beammap and stores 
