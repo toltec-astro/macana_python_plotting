@@ -170,8 +170,8 @@ class macana_plotter:
             self.nc_variables = self.nc.variables
             self.get_rows_cols()
             
-            if 'boloData' in self.nc_variables:
-                self.workingDetectors = self.nc_variables['boloData'].shape[1]
+            #if 'boloData' in self.nc_variables:
+            self.workingDetectors = 113#self.nc_variables['boloData'].shape[1]
         else:
             print('    Cannot find variables')
                 
@@ -209,8 +209,13 @@ class macana_plotter:
         self.detector = detector
         print('Getting beammap ' + self.maptype + ' for detector %i' % (detector))
         self.var = 'beammap' + self.maptype + str(detector)
-        self.matrix = self.nc.variables[self.var]
-        self.matrix_rot = np.rot90(np.array(self.matrix[:]))
+        self.matrix = np.array(self.nc.variables[self.var])
+        
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                if self.matrix[i,j] != self.matrix[i,j]:
+                    self.matrix[i,j]  = 0.0
+        self.matrix_rot = np.rot90(self.matrix[:])
                 
         if plotting == True:
             print('    >Plotting beammap ' + self.maptype + ' for detector %i' % (detector))
@@ -237,7 +242,7 @@ class macana_plotter:
                     print('    >No file location given.  Cannot save figure.')
                 if self.close_fig == True:
                     plt.close()
-        print('''------------------------------------------------''')
+        #print('''------------------------------------------------''')
 
     def get_gauss_params(self, detector = None):
         if detector == None:
@@ -445,7 +450,7 @@ class macana_plotter:
                     print('    >No file location given.  Cannot save figure.')
                 if self.close_fig == True:
                     plt.close()
-    
+        print('''------------------------------------------------''')
     def plot_array(self, color_param, saveon = False, save_name = None):
         print('Making a plot of the array')
         param_array = {}
@@ -454,6 +459,12 @@ class macana_plotter:
         param_array['yoffset'] = np.zeros(self.workingDetectors)
         param_array['azfwhm'] = np.zeros(self.workingDetectors)
         param_array['elfwhm'] = np.zeros(self.workingDetectors)
+        
+        param_array['Amplitude Error'] = np.zeros(self.workingDetectors)
+        param_array['xoffset Error'] = np.zeros(self.workingDetectors)
+        param_array['yoffset Error'] = np.zeros(self.workingDetectors)
+        param_array['azfwhm Error'] = np.zeros(self.workingDetectors)
+        param_array['elfwhm Error'] = np.zeros(self.workingDetectors)
         
         f, ax = plt.subplots()        
         for i in range(self.workingDetectors):
@@ -464,6 +475,12 @@ class macana_plotter:
             param_array['yoffset'][i] = self.yoffset
             param_array['azfwhm'][i] = self.azfwhm
             param_array['elfwhm'][i] = self.elfwhm
+
+            param_array['Amplitude Error'][i] = self.amp_err
+            param_array['xoffset Error'][i] = self.xoffset_err
+            param_array['yoffset Error'][i] = self.yoffset_err
+            param_array['azfwhm Error'][i] = self.azfwhm_err
+            param_array['elfwhm Error'][i] = self.elfwhm_err
                 
         cmap = plt.cm.hot
         norm = matplotlib.colors.Normalize(vmin=param_array[color_param].min(), vmax=param_array[color_param].max())  
@@ -508,12 +525,13 @@ class macana_plotter:
             param_array[i,2] = self.yoffset
             param_array[i,3] = self.azfwhm
             param_array[i,4] = self.elfwhm
+            
             param_array[i,5] = self.amp_err
             param_array[i,6] = self.xoffset_err
             param_array[i,7] = self.yoffset_err
             param_array[i,8] = self.azfwhm_err
             param_array[i,9] = self.elfwhm_err
-        
+                    
         for i in range(len(param_array[0,:])):
             plt.figure()
             plt.hist(param_array[:,i], bins = bins, histtype = 'stepfilled', facecolor = 'w',
