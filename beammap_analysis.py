@@ -29,11 +29,14 @@ Figures (see below).  Each of the generated figures have 5 subplots of the fit v
 number.
 '''
 def obs_click(event):
+    global ix, iy
     ix, iy = event.xdata, event.ydata
     print('You selected observation %i which corresponds to %s' %(ix, beammaps[int(ix)]))
     
     #Values   
     f1 = plt.figure()
+    plt.title('Fit Values vs Detector number for observation %i' % (int(ix)))
+
     cid = f1.canvas.mpl_connect('button_press_event', detector_click)
 
     ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
@@ -61,11 +64,13 @@ def obs_click(event):
     ax5.plot(range(ndetectors), param_array['elfwhm'][:,int(ix)])
     ax5.set_ylabel('elfwhm')
     ax5.set_xlabel('Detector number')
-
+    
     plt.tight_layout()
     
     #Errors
     f2 = plt.figure()
+    plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
+
     cid = f2.canvas.mpl_connect('button_press_event', detector_click)
  
     ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
@@ -97,11 +102,16 @@ def obs_click(event):
     plt.tight_layout()
     plt.show()
 
-#For the figures produced by "obs_click", this outputs the nearest detector
-#number to the clicked point.
+#For the figures produced by "obs_click", this outputs the nearest detector number to the clicked point.  Double clicking
+#will make a beammap for the nearest detector.
 def detector_click(event):
-    ix, iy = event.xdata, event.ydata
-    print('This is detector %i ' % (int(ix)))
+    ix2, iy2 = event.xdata, event.ydata
+    print('This is detector %i ' % (int(ix2)))
+    
+    if event.dblclick:
+        obs = macana_plotter(str(ix))
+        obs.load_nc(beammaps[int(ix)])
+        obs.beammap(int(ix2), 'Signal', plotting=True)
     
 #Parameters for clicking function.
 nplots = 3
