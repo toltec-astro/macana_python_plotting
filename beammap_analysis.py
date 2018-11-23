@@ -28,14 +28,14 @@ Function to handle clicking.  This makes two figures when a point is clicked on 
 Figures (see below).  Each of the generated figures have 5 subplots of the fit values or errors plotted against the detector
 number.
 '''
-def onclick(event):
-    global ix, iy
+def obs_click(event):
     ix, iy = event.xdata, event.ydata
-    print 'x = %d, y = %f'%(
-        ix, iy)
+    print('You selected observation %i which corresponds to %s' %(ix, beammaps[int(ix)]))
     
     #Values   
-    plt.figure()   
+    f1 = plt.figure()
+    cid = f1.canvas.mpl_connect('button_press_event', detector_click)
+
     ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
     ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
     ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
@@ -65,7 +65,9 @@ def onclick(event):
     plt.tight_layout()
     
     #Errors
-    plt.figure()   
+    f2 = plt.figure()
+    cid = f2.canvas.mpl_connect('button_press_event', detector_click)
+ 
     ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
     ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
     ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
@@ -95,6 +97,12 @@ def onclick(event):
     plt.tight_layout()
     plt.show()
 
+#For the figures produced by "obs_click", this outputs the nearest detector
+#number to the clicked point.
+def detector_click(event):
+    ix, iy = event.xdata, event.ydata
+    print('This is detector %i ' % (int(ix)))
+    
 #Parameters for clicking function.
 nplots = 3
 nparams = 5
@@ -161,43 +169,11 @@ param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 'elfwhm',
                'Amplitude Error', 'xoffset Error', 'yoffset Error',
               'azfwhm Error', 'elfwhm Error']
 
-
-'''Don't uncomment this as it produces a lot of figures.  Will likely remove later once I'm sure I don't need it.
-for i in range(ndetectors):
-    for j in range(len(param_names)):
-        print('On detector %i, plotting %s' % (i, param_names[j]))
-        plt.figure(0)
-        plt.hist(param_array[param_names[j]][i,:], 25, histtype='step', edgecolor='k')
-        plt.xlabel(param_names[j])
-        plt.title(param_names[j] + ' for detector ' + str(i))
-        plt.savefig('/home/mmccrackan/Documents/TolTEC-Project/detector_figs/detector' + str(i) + '_' + param_names[j])
-        plt.close('all')
-        
-for i in range(beam_num):
-    for j in range(len(param_names)):
-        print('On beam %i, plotting %s' % (i, param_names[j]))
-        plt.figure()
-        plt.hist(param_array[param_names[j]][:,i], 25, histtype='step', edgecolor='k')
-        plt.xlabel(param_names[j])
-        plt.title(param_names[j] + ' for beam ' + str(i))
-        plt.savefig('/home/mmccrackan/Documents/TolTEC-Project/beam_figs/beam' + str(i) + '_' + param_names[j])
-        plt.close('all')
-
-for j in range(len(param_names)):
-    f = plt.figure()
-    cid = f.canvas.mpl_connect('button_press_event', onclick)
-    ax = f.add_subplot(111)
-    plt.grid(True)
-    for i in range(beam_num):
-        ax.scatter(range(ndetectors), param_array[param_names[j]][:,i])
-        ax.set_xlabel('Detector')
-        ax.set_ylabel(param_names[j])
-'''
 #Plots the fit values and errors against the observation number.  Each figure is slightly interactive in that one can click on
 #an observation to open up additional figures for that observation.  See intro.
 for j in range(len(param_names)):
     f = plt.figure()
-    cid = f.canvas.mpl_connect('button_press_event', onclick)
+    cid = f.canvas.mpl_connect('button_press_event', obs_click)
     ax = f.add_subplot(111)
     plt.grid(True)
     for i in range(ndetectors):
@@ -205,6 +181,5 @@ for j in range(len(param_names)):
         ax.set_xlabel('observation')
         ax.set_ylabel(param_names[j])
     plt.axis('tight')
-
-
+    
 plt.show()
