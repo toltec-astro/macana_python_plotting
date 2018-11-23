@@ -24,86 +24,87 @@ from macana_classes import macana_plotter
 plt.close('all')
 
 '''
-Function to handle clicking.  This makes two figures when a point is clicked on in the value/error vs observation number
+Function to handle clicking.  This makes two figures when a point is *double* clicked on in the value/error vs observation number
 Figures (see below).  Each of the generated figures have 5 subplots of the fit values or errors plotted against the detector
 number.
 '''
 def obs_click(event):
-    global ix, iy
-    ix, iy = event.xdata, event.ydata
-    print('You selected observation %i which corresponds to %s' %(ix, beammaps[int(ix)]))
+    if event.dblclick:
+        global ix, iy
+        ix, iy = event.xdata, event.ydata
+        print('You selected observation %i which corresponds to %s' %(ix, beammaps[int(ix)]))
+        
+        #Values   
+        f1 = plt.figure()
+        plt.title('Fit Values vs Detector number for observation %i' % (int(ix)))
     
-    #Values   
-    f1 = plt.figure()
-    plt.title('Fit Values vs Detector number for observation %i' % (int(ix)))
-
-    cid = f1.canvas.mpl_connect('button_press_event', detector_click)
-
-    ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
-    ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
-    ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
-    ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
-    ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        cid = f1.canvas.mpl_connect('button_press_event', detector_click)
     
-    ax1.plot(range(ndetectors), param_array['Amplitude'][:,int(ix)])
-    ax1.set_ylabel('Amplitude')
-    ax1.set_xlabel('Detector number')
-
-    ax2.plot(range(ndetectors), param_array['xoffset'][:,int(ix)])
-    ax2.set_ylabel('xoffset')
-    ax2.set_xlabel('Detector number')
-
-    ax3.plot(range(ndetectors), param_array['yoffset'][:,int(ix)])
-    ax3.set_ylabel('yoffset')
-    ax3.set_xlabel('Detector number')
-
-    ax4.plot(range(ndetectors), param_array['azfwhm'][:,int(ix)])
-    ax4.set_ylabel('azfwhm')
-    ax4.set_xlabel('Detector number')
+        ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        
+        ax1.plot(range(ndetectors), param_array['Amplitude'][:,int(ix)], c='k')
+        ax1.set_ylabel('Amplitude')
+        ax1.set_xlabel('Detector number')
     
-    ax5.plot(range(ndetectors), param_array['elfwhm'][:,int(ix)])
-    ax5.set_ylabel('elfwhm')
-    ax5.set_xlabel('Detector number')
+        ax2.plot(range(ndetectors), param_array['xoffset'][:,int(ix)], c='k')
+        ax2.set_ylabel('xoffset')
+        ax2.set_xlabel('Detector number')
     
-    plt.tight_layout()
+        ax3.plot(range(ndetectors), param_array['yoffset'][:,int(ix)], c='k')
+        ax3.set_ylabel('yoffset')
+        ax3.set_xlabel('Detector number')
     
-    #Errors
-    f2 = plt.figure()
-    plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
-
-    cid = f2.canvas.mpl_connect('button_press_event', detector_click)
- 
-    ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
-    ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
-    ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
-    ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
-    ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        ax4.plot(range(ndetectors), param_array['azfwhm'][:,int(ix)], c='k')
+        ax4.set_ylabel('azfwhm')
+        ax4.set_xlabel('Detector number')
+        
+        ax5.plot(range(ndetectors), param_array['elfwhm'][:,int(ix)], c='k')
+        ax5.set_ylabel('elfwhm')
+        ax5.set_xlabel('Detector number')
+        
+        plt.tight_layout()
+        
+        #Errors
+        f2 = plt.figure()
+        plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
     
-    ax6.plot(range(ndetectors), param_array['Amplitude Error'][:,int(ix)])
-    ax6.set_ylabel('Amplitude error')
-    ax6.set_xlabel('Detector number')
-
-    ax7.plot(range(ndetectors), param_array['xoffset Error'][:,int(ix)])
-    ax7.set_ylabel('xoffset error')
-    ax7.set_xlabel('Detector number')
-
-    ax8.plot(range(ndetectors), param_array['yoffset Error'][:,int(ix)])
-    ax8.set_ylabel('yoffset error')
-    ax8.set_xlabel('Detector number')
-
-    ax9.plot(range(ndetectors), param_array['azfwhm Error'][:,int(ix)])
-    ax9.set_ylabel('azfwhm error')
-    ax9.set_xlabel('Detector number')
+        cid = f2.canvas.mpl_connect('button_press_event', detector_click)
     
-    ax10.plot(range(ndetectors), param_array['elfwhm Error'][:,int(ix)])
-    ax10.set_ylabel('elfwhm error')
-    ax10.set_xlabel('Detector number')
+        ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        
+        ax6.plot(range(ndetectors), param_array['Amplitude Error'][:,int(ix)], c='k')
+        ax6.set_ylabel('Amplitude error')
+        ax6.set_xlabel('Detector number')
+    
+        ax7.plot(range(ndetectors), param_array['xoffset Error'][:,int(ix)], c='k')
+        ax7.set_ylabel('xoffset error')
+        ax7.set_xlabel('Detector number')
+    
+        ax8.plot(range(ndetectors), param_array['yoffset Error'][:,int(ix)], c='k')
+        ax8.set_ylabel('yoffset error')
+        ax8.set_xlabel('Detector number')
+    
+        ax9.plot(range(ndetectors), param_array['azfwhm Error'][:,int(ix)], c='k')
+        ax9.set_ylabel('azfwhm error')
+        ax9.set_xlabel('Detector number')
+        
+        ax10.plot(range(ndetectors), param_array['elfwhm Error'][:,int(ix)], c='k')
+        ax10.set_ylabel('elfwhm error')
+        ax10.set_xlabel('Detector number')
+    
+        plt.tight_layout()
+        plt.show()
 
-    plt.tight_layout()
-    plt.show()
-
-#For the figures produced by "obs_click", this outputs the nearest detector number to the clicked point.  Double clicking
-#will make a beammap for the nearest detector.
+#For the figures produced by "obs_click", this outputs the nearest detector
+#number to the clicked point.
 def detector_click(event):
     ix2, iy2 = event.xdata, event.ydata
     print('This is detector %i ' % (int(ix2)))
@@ -170,7 +171,7 @@ for j in range(beam_num):
         
         if abs(obs.azfwhm_err) >=azfwhm_lim:
             print('        Az FWHM too large for beam %i detector %i with value of %f' % (j,i, obs.azfwhm_err))
-        if abs(obs.elfwhm_err) >=azfwhm_lim:
+        if abs(obs.elfwhm_err) >=elfwhm_lim:
             print('        El FWHM too large for beam %i detector %i with value of %f' % (j,i, obs.elfwhm_err))
 
  
@@ -182,12 +183,13 @@ param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 'elfwhm',
 #Plots the fit values and errors against the observation number.  Each figure is slightly interactive in that one can click on
 #an observation to open up additional figures for that observation.  See intro.
 for j in range(len(param_names)):
-    f = plt.figure()
+    f = plt.figure(j)
     cid = f.canvas.mpl_connect('button_press_event', obs_click)
     ax = f.add_subplot(111)
     plt.grid(True)
     for i in range(ndetectors):
-        ax.scatter(range(beam_num), param_array[param_names[j]][i,:])
+        ax.scatter(range(beam_num), param_array[param_names[j]][i,:], s=5,
+        marker = 's', c='k')
         ax.set_xlabel('observation')
         ax.set_ylabel(param_names[j])
     plt.axis('tight')
