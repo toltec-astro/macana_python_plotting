@@ -1,3 +1,13 @@
+'''
+This code is an early work in progress.
+
+This code takes a list of beammap nc files and pulls the fit values and errors from each detector for each observation and
+stores it in a python dictionary.  For now, this code plots the values and errors against the observation number.  Each 
+observaton point can be clicked on for any of the figures, which will open new figures of the fit values and errors plotted
+against the detector number for that observation.  This let's you find what detector in a particular observation is bad.
+'''
+
+#Import needed modules
 import numpy as np
 import glob
 import re
@@ -5,14 +15,25 @@ import sys
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 
+#This code uses macana_plotter, so this line specifies the path to it.
+sys.path.insert(0, '/home/mmccrackan/macana_python_plotting/')
+
+#We need this for opening the nc files easily.
+from macana_classes import macana_plotter
+
 plt.close('all')
 
+'''
+Function to handle clicking.  This makes two figures when a point is clicked on in the value/error vs observation number
+Figures (see below).  Each of the generated figures have 5 subplots of the fit values or errors plotted against the detector
+number.
+'''
 def onclick(event):
     global ix, iy
     ix, iy = event.xdata, event.ydata
     print 'x = %d, y = %f'%(
         ix, iy)
- 
+    
     #Values   
     plt.figure()   
     ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
@@ -74,29 +95,29 @@ def onclick(event):
     plt.tight_layout()
     plt.show()
 
-coords = []
+#Parameters for clicking function.
 nplots = 3
 nparams = 5
 
-#plt.ioff()
-
-sys.path.insert(0, '/home/mmccrackan/macana_python_plotting/')
-
-from macana_classes import macana_plotter
-
+#Path of directory including all the beammap nc files.
 beammap_path = '/home/mmccrackan/Documents/TolTEC-Project/beammaps_out/'
 
+#Gets the name of the files in the directory.
 beammaps = glob.glob(beammap_path + '*')
 beam_num = len(beammaps)
 
+#Number of detectors is hardcoded for now.
 ndetectors = 113
 
+#These are the "reasonable" limits for the fit errors.  If the fit errors are larger, the observation number and detector will
+#output in the loop below.
 amp_lim = 0.01
 xoffset_lim = 1.0
 yoffset_lim = 1.0
 azfwhm_lim = 1.0
 elfwhm_lim = 1.0
 
+#Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
 param_array = {}
 param_array['Amplitude'] = np.zeros([ndetectors, beam_num])
 param_array['xoffset'] = np.zeros([ndetectors, beam_num])
@@ -110,6 +131,7 @@ param_array['yoffset Error'] = np.zeros([ndetectors, beam_num])
 param_array['azfwhm Error'] = np.zeros([ndetectors, beam_num])
 param_array['elfwhm Error'] = np.zeros([ndetectors, beam_num])
 
+#Loop through the observations putting the fit values and errors for each detector into the dictionary.
 for j in range(beam_num):
     obs = macana_plotter(j)
     obs.load_nc(beammaps[j])
@@ -128,17 +150,19 @@ for j in range(beam_num):
         param_array['azfwhm Error'][i,j] = obs.azfwhm_err
         param_array['elfwhm Error'][i,j] = obs.elfwhm_err
         
-        if obs.azfwhm_err >=azfwhm_lim:
+        if abs(obs.azfwhm_err) >=azfwhm_lim:
             print('        Az FWHM too large for beam %i detector %i with value of %f' % (j,i, obs.azfwhm_err))
-        if obs.elfwhm_err >=azfwhm_lim:
+        if abs(obs.elfwhm_err) >=azfwhm_lim:
             print('        El FWHM too large for beam %i detector %i with value of %f' % (j,i, obs.elfwhm_err))
 
-#np.save('/home/mmccrackan/Documents/TolTEC-Project/fit_array', param_array)
-
+ 
+#Names for plotting.
 param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 'elfwhm', 
                'Amplitude Error', 'xoffset Error', 'yoffset Error',
-               'azfwhm Error', 'elfwhm Error']
-'''
+              'azfwhm Error', 'elfwhm Error']
+
+
+'''Don't uncomment this as it produces a lot of figures.  Will likely remove later once I'm sure I don't need it.
 for i in range(ndetectors):
     for j in range(len(param_names)):
         print('On detector %i, plotting %s' % (i, param_names[j]))
@@ -169,6 +193,8 @@ for j in range(len(param_names)):
         ax.set_xlabel('Detector')
         ax.set_ylabel(param_names[j])
 '''
+#Plots the fit values and errors against the observation number.  Each figure is slightly interactive in that one can click on
+#an observation to open up additional figures for that observation.  See intro.
 for j in range(len(param_names)):
     f = plt.figure()
     cid = f.canvas.mpl_connect('button_press_event', onclick)
@@ -180,6 +206,5 @@ for j in range(len(param_names)):
         ax.set_ylabel(param_names[j])
     plt.axis('tight')
 
-#cid = plt.gcf().canvas.mpl_connect('button_press_event', onclick)
 
 plt.show()
