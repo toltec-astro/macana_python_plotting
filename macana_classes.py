@@ -148,22 +148,22 @@ class macana_plotter:
                          array_plot_loc = None):
                          
         if type(beam_loc) == str:
-            if 'beam_loc' not in dir(self):
+            #if 'beam_loc' not in dir(self):
                     self.beam_loc = beam_loc
         if type(gauss_loc) == str:
-            if 'gauss_loc' not in dir(self):
+            #if 'gauss_loc' not in dir(self):
                 self.gauss_loc = gauss_loc
         if type(resid_loc) == str:
-            if 'resid_loc' not in dir(self):
+            #if 'resid_loc' not in dir(self):
                 self.resid_loc = resid_loc
         if type(corner_loc) == str:
-            if 'corner_loc' not in dir(self):
+            #if 'corner_loc' not in dir(self):
                 self.corner_loc = corner_loc
         if type(mosaic_loc) == str:
-            if 'mosaic_loc' not in dir(self):
+            #if 'mosaic_loc' not in dir(self):
                 self.mosaic_loc = mosaic_loc
         if type(array_plot_loc) == str:
-            if 'array_plot_loc' not in dir(self):
+            #if 'array_plot_loc' not in dir(self):
                 self.array_plot_loc = array_plot_loc
     
     def load_nc(self, ncfile):
@@ -584,8 +584,14 @@ class beammap_analyzer:
         plot_obs:
             This plots the fit values and errors (10 figures) against the
             observation number (arbitrary based on your input list of files).
-            This is displayed as a scatter plot with all detectors for each 
-            observation being shown.
+            There are two options for plotting currently specifying the 
+            'fig_type' input to 'plot_obs:'
+                
+                fig_type = scatter: draw points as a scatter plot, where each 
+                point is a detector.
+                
+                fig_type = bar: make bars for each observation where the height 
+                is the min or max of the fit value or error.
             
             If you click on an observation point, it will display the name of
             the nc file in the list of files.
@@ -600,6 +606,7 @@ class beammap_analyzer:
                 Double clicking will call macana_plotter's beammap method and
                 make a beammap for that detector.
     """
+    
     def __init__(self):
         print('Welcome to beammap_analyzer!')
         
@@ -711,7 +718,7 @@ class beammap_analyzer:
         self.beammaps = glob.glob(path + '/*')
         self.beam_num = len(self.beammaps)
     
-    def load(self):
+    def load(self, find_bad = False):
         #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
         self.param_array = {}
         self.param_array['Amplitude'] = np.zeros([self.ndetectors, self.beam_num])
@@ -745,7 +752,7 @@ class beammap_analyzer:
                 self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
                 self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
     
-    def plot_obs(self):
+    def plot_obs(self, fig_type = 'scatter'):
         #Plots the fit values and errors against the observation number.  
         #Each figure is slightly interactive in that one can click on an 
         #observation to open up additional figures for that observation.  See intro.
@@ -753,12 +760,21 @@ class beammap_analyzer:
             f = plt.figure(j)
             f.canvas.mpl_connect('button_press_event', self.obs_click)
             ax = f.add_subplot(111)
-            plt.grid(True)
-            for i in range(self.ndetectors):
-                ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=5,
-                marker = 's', c='k')
-                ax.set_xlabel('observation')
-                ax.set_ylabel(self.param_names[j])
+            if fig_type == 'scatter':
+                plt.grid(True)
+                for i in range(self.ndetectors):
+                    ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=5,
+                    marker = 's', c='k')
+                
+            elif fig_type == 'bar':
+                max_bars = np.zeros(self.beam_num)
+                min_bars = np.zeros(self.beam_num)
+                for i in range(self.beam_num):
+                    max_bars[i] = max(self.param_array[self.param_names[j]][:,i])
+                    min_bars[i] = min(self.param_array[self.param_names[j]][:,i])
+                ax.bar(range(self.beam_num), height=max_bars)
+                ax.bar(range(self.beam_num), height=min_bars)
+            ax.set_xlabel('observation')
+            ax.set_ylabel(self.param_names[j])
             plt.axis('tight')
-            
         plt.show()
