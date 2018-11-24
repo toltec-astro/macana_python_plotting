@@ -1,8 +1,13 @@
 import numpy as np
-import matplotlib
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import netCDF4
 from matplotlib.patches import Ellipse
+
+import netCDF4
+import glob
+import re
+import sys
 
 class macana_plotter:
     """Macana Plotter:
@@ -483,7 +488,7 @@ class macana_plotter:
             param_array['elfwhm Error'][i] = self.elfwhm_err
                 
         cmap = plt.cm.hot
-        norm = matplotlib.colors.Normalize(vmin=param_array[color_param].min(), vmax=param_array[color_param].max())  
+        norm = mpl.colors.Normalize(vmin=param_array[color_param].min(), vmax=param_array[color_param].max())  
         for i in range(self.workingDetectors):
             ax.add_artist(Ellipse((param_array['xoffset'][i], param_array['yoffset'][i]), 
             height = param_array['azfwhm'][i], width = param_array['elfwhm'][i], color=cmap(norm(param_array[color_param][i]))))
@@ -551,3 +556,209 @@ class macana_plotter:
                 if self.close_fig == True:
                     plt.close()
         print('''------------------------------------------------''')
+
+
+class beammap_analyzer:
+    """
+    This code is an early work in progress.
+
+    This code takes a list of beammap nc files and pulls the fit values and 
+    errors from each detector for each observation and stores it in a python 
+    dictionary.  For now, this code plots the values and errors against the 
+    observation number.  Each observaton point can be clicked on for any of the 
+    figures, which will open new figures of the fit values and errors plotted
+    against the detector number for that observation.  This let's you find what 
+    detector in a particular observation is bad.
+    
+    The following methods are included:
+        
+        get_files:
+            This takes as input a path to a directory containing nc files and
+            get's the name of all the files within that directory.
+        
+        load:
+            This method uses macana_plotter to get the fit values and errors for
+            each of the nc files stored using 'load' and stores them into a
+            python dictionary.
+        
+        plot_obs:
+            This plots the fit values and errors (10 figures) against the
+            observation number (arbitrary based on your input list of files).
+            This is displayed as a scatter plot with all detectors for each 
+            observation being shown.
+            
+            If you click on an observation point, it will display the name of
+            the nc file in the list of files.
+            
+            If you double click, this will open two new figures of the fit 
+            values and errors plotted against the detector number for that
+            observation only:
+                
+                Clicking on a detector gives that detector number (and name 
+                soon).
+                
+                Double clicking will call macana_plotter's beammap method and
+                make a beammap for that detector.
+    """
+    def __init__(self):
+        print('Welcome to beammap_analyzer!')
+        
+        #Number of detectors is hardcoded for now.
+        self.ndetectors = 113
+        
+        #These are the "reasonable" limits for the fit errors.  If the fit errors are larger, the observation number and detector will
+        #output in the loop below.
+        self.amp_lim = 0.01
+        self.xoffset_lim = 1.0
+        self.yoffset_lim = 1.0
+        self.azfwhm_lim = 1.0
+        self.elfwhm_lim = 1.0
+
+        #Names for plotting.
+        self.param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 
+        'elfwhm', 'Amplitude Error', 'xoffset Error', 'yoffset Error',
+              'azfwhm Error', 'elfwhm Error']
+        
+    def obs_click(self, event):
+        global ix, iy
+        ix, iy = event.xdata, event.ydata
+        
+        #if event:
+        print('You selected observation %i which corresponds to %s' %(ix, self.beammaps[int(ix)]))
+        
+        if event.dblclick:
+            #Values   
+            f1 = plt.figure()
+            plt.title('Fit Values vs Detector number for observation %i' % (int(ix)))
+        
+            f1.canvas.mpl_connect('button_press_event', self.detector_click)
+        
+            ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+            ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
+            ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
+            ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
+            ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+            
+            ax1.plot(range(self.ndetectors), self.param_array['Amplitude'][:,int(ix)], c='k')
+            ax1.set_ylabel('Amplitude')
+            ax1.set_xlabel('Detector number')
+        
+            ax2.plot(range(self.ndetectors), self.param_array['xoffset'][:,int(ix)], c='k')
+            ax2.set_ylabel('xoffset')
+            ax2.set_xlabel('Detector number')
+        
+            ax3.plot(range(self.ndetectors), self.param_array['yoffset'][:,int(ix)], c='k')
+            ax3.set_ylabel('yoffset')
+            ax3.set_xlabel('Detector number')
+        
+            ax4.plot(range(self.ndetectors), self.param_array['azfwhm'][:,int(ix)], c='k')
+            ax4.set_ylabel('azfwhm')
+            ax4.set_xlabel('Detector number')
+            
+            ax5.plot(range(self.ndetectors), self.param_array['elfwhm'][:,int(ix)], c='k')
+            ax5.set_ylabel('elfwhm')
+            ax5.set_xlabel('Detector number')
+            
+            plt.tight_layout()
+            
+            #Errors
+            f2 = plt.figure()
+            plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
+        
+            f2.canvas.mpl_connect('button_press_event', self.detector_click)
+        
+            ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+            ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
+            ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
+            ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
+            ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+            
+            ax6.plot(range(self.ndetectors), self.param_array['Amplitude Error'][:,int(ix)], c='k')
+            ax6.set_ylabel('Amplitude error')
+            ax6.set_xlabel('Detector number')
+        
+            ax7.plot(range(self.ndetectors), self.param_array['xoffset Error'][:,int(ix)], c='k')
+            ax7.set_ylabel('xoffset error')
+            ax7.set_xlabel('Detector number')
+        
+            ax8.plot(range(self.ndetectors), self.param_array['yoffset Error'][:,int(ix)], c='k')
+            ax8.set_ylabel('yoffset error')
+            ax8.set_xlabel('Detector number')
+        
+            ax9.plot(range(self.ndetectors), self.param_array['azfwhm Error'][:,int(ix)], c='k')
+            ax9.set_ylabel('azfwhm error')
+            ax9.set_xlabel('Detector number')
+            
+            ax10.plot(range(self.ndetectors), self.param_array['elfwhm Error'][:,int(ix)], c='k')
+            ax10.set_ylabel('elfwhm error')
+            ax10.set_xlabel('Detector number')
+        
+            plt.tight_layout()
+            plt.show()
+    
+    #For the figures produced by "obs_click", this outputs the nearest detector
+    #number to the clicked point.
+    def detector_click(self, event):
+        ix2, iy2 = event.xdata, event.ydata
+        print('This is detector %i ' % (int(ix2)))
+        
+        if event.dblclick:
+            obs = macana_plotter(str(ix))
+            obs.load_nc(self.beammaps[int(ix)])
+            obs.beammap(int(ix2), 'Signal', plotting=True)
+    
+    def get_files(self,path):
+        self.beammaps = glob.glob(path + '/*')
+        self.beam_num = len(self.beammaps)
+    
+    def load(self):
+        #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
+        self.param_array = {}
+        self.param_array['Amplitude'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['xoffset'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['yoffset'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['azfwhm'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['elfwhm'] = np.zeros([self.ndetectors, self.beam_num])
+        
+        self.param_array['Amplitude Error'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['xoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['yoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['azfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
+        self.param_array['elfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
+        
+        #Loop through the observations putting the fit values and errors for each detector into the dictionary.
+        for j in range(self.beam_num):
+            obs = macana_plotter(j)
+            obs.load_nc(self.beammaps[j])
+            for i in range(self.ndetectors):
+                obs.get_gauss_params(detector = i)
+                
+                self.param_array['Amplitude'][i,j] = obs.amp
+                self.param_array['xoffset'][i,j] = obs.xoffset
+                self.param_array['yoffset'][i,j] = obs.yoffset
+                self.param_array['azfwhm'][i,j] = obs.azfwhm
+                self.param_array['elfwhm'][i,j] = obs.elfwhm
+                
+                self.param_array['Amplitude Error'][i,j] = obs.amp_err
+                self.param_array['xoffset Error'][i,j] = obs.xoffset_err
+                self.param_array['yoffset Error'][i,j] = obs.yoffset_err
+                self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
+                self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
+    
+    def plot_obs(self):
+        #Plots the fit values and errors against the observation number.  
+        #Each figure is slightly interactive in that one can click on an 
+        #observation to open up additional figures for that observation.  See intro.
+        for j in range(len(self.param_names)):
+            f = plt.figure(j)
+            f.canvas.mpl_connect('button_press_event', self.obs_click)
+            ax = f.add_subplot(111)
+            plt.grid(True)
+            for i in range(self.ndetectors):
+                ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=5,
+                marker = 's', c='k')
+                ax.set_xlabel('observation')
+                ax.set_ylabel(self.param_names[j])
+            plt.axis('tight')
+            
+        plt.show()
