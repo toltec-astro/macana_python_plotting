@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
+from matplotlib.widgets import Button, AxesWidget
 
 import netCDF4
 import glob
@@ -605,6 +606,10 @@ class beammap_analyzer:
                 
                 Double clicking will call macana_plotter's beammap method and
                 make a beammap for that detector.
+                
+                Right clicking (two finger on Mac) will call macana_plotter's
+                plot_array function.  The colormap will be for picked based on
+                the subplot clicked on.
     """
     
     def __init__(self):
@@ -641,10 +646,19 @@ class beammap_analyzer:
             f1.canvas.mpl_connect('button_press_event', self.detector_click)
         
             ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+            ax1.aname = self.param_names[0]
+            
             ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
+            ax2.aname = self.param_names[1]
+            
             ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
+            ax3.aname = self.param_names[2]
+            
             ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
+            ax4.aname = self.param_names[3]
+            
             ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+            ax5.aname = self.param_names[4]
             
             ax1.plot(range(self.ndetectors), self.param_array['Amplitude'][:,int(ix)], c='k')
             ax1.set_ylabel('Amplitude')
@@ -675,10 +689,19 @@ class beammap_analyzer:
             f2.canvas.mpl_connect('button_press_event', self.detector_click)
         
             ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+            ax6.aname = self.param_names[5]
+            
             ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
+            ax7.aname = self.param_names[6]
+            
             ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
+            ax8.aname = self.param_names[7]
+            
             ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
+            ax9.aname = self.param_names[8]
+            
             ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+            ax10.aname = self.param_names[9]
             
             ax6.plot(range(self.ndetectors), self.param_array['Amplitude Error'][:,int(ix)], c='k')
             ax6.set_ylabel('Amplitude error')
@@ -706,13 +729,19 @@ class beammap_analyzer:
     #For the figures produced by "obs_click", this outputs the nearest detector
     #number to the clicked point.
     def detector_click(self, event):
-        ix2, iy2 = event.xdata, event.ydata
+        global ix2, iy2, iinaxes2
+        ix2, iy2, iinaxes2 = event.xdata, event.ydata, event.inaxes
         print('This is detector %i ' % (int(ix2)))
         
         if event.dblclick:
             obs = macana_plotter(str(ix))
             obs.load_nc(self.beammaps[int(ix)])
             obs.beammap(int(ix2), 'Signal', plotting=True)
+        
+        if event.button == 3:
+            obs = macana_plotter(str(ix))
+            obs.load_nc(self.beammaps[int(ix)])
+            obs.plot_array(iinaxes2.aname)
     
     def get_files(self,path):
         self.beammaps = glob.glob(path + '/*')
@@ -772,9 +801,15 @@ class beammap_analyzer:
                 for i in range(self.beam_num):
                     max_bars[i] = max(self.param_array[self.param_names[j]][:,i])
                     min_bars[i] = min(self.param_array[self.param_names[j]][:,i])
-                ax.bar(range(self.beam_num), height=max_bars)
-                ax.bar(range(self.beam_num), height=min_bars)
+                ax.bar(range(self.beam_num), height=max_bars, widht = 0.1)
+                ax.bar(range(self.beam_num), height=min_bars, width = 0.1)
             ax.set_xlabel('observation')
             ax.set_ylabel(self.param_names[j])
             plt.axis('tight')
         plt.show()
+
+plt.close('all')
+beam = beammap_analyzer()
+beam.get_files('/Users/quirkyneku/Documents/TolTEC-Project/test_beams/')
+beam.load()
+beam.plot_obs()
