@@ -263,6 +263,7 @@ class macana_plotter:
                 print('Getting fit parameters for detector %i' % (detector))
                 d = detector
         if 'nc_variables' in dir(self):
+            #self.boloname = self.nc_variables['beammapSignal' + str(d)].getncattr('bolo_name')
             self.amp = self.nc_variables['beammapSignal' + str(d)].getncattr('amplitude')
             self.azfwhm = self.nc_variables['beammapSignal' + str(d)].getncattr('FWHM_x')
             self.elfwhm = self.nc_variables['beammapSignal' + str(d)].getncattr('FWHM_y')
@@ -457,9 +458,20 @@ class macana_plotter:
                 if self.close_fig == True:
                     plt.close()
         print('''------------------------------------------------''')
+        
+        
+    def array_click(self, event, param_array):
+        ix, iy = event.xdata, event.ydata
+        dist2 = (ix - param_array['xoffset'])**2 + (iy - param_array['yoffset'])**2
+        index = np.where(dist2 == min(dist2))
+        if min(dist2) <10:
+            #print('This is detector %f ' % (param_array['Amplitude'][index[0]]))
+            print('This is detector %d ' % (index[0]))
+    
     def plot_array(self, color_param, saveon = False, save_name = None):
         print('Making a plot of the array')
         param_array = {}
+        #param_array['Bolo Name'] = np.zeros(self.workingDetectors)
         param_array['Amplitude'] = np.zeros(self.workingDetectors)
         param_array['xoffset'] = np.zeros(self.workingDetectors)
         param_array['yoffset'] = np.zeros(self.workingDetectors)
@@ -472,10 +484,15 @@ class macana_plotter:
         param_array['azfwhm Error'] = np.zeros(self.workingDetectors)
         param_array['elfwhm Error'] = np.zeros(self.workingDetectors)
         
-        f, ax = plt.subplots()        
+        f, ax = plt.subplots()
+        f.canvas.mpl_connect('button_press_event', lambda event: self.array_click(event, param_array))
+        #ax.patch.set_facecolor('gray')
+        plt.grid()
+        
         for i in range(self.workingDetectors):
             #self.beammap(i,'Signal')
             d = self.get_gauss_params(i)
+            #param_array['Bolo Name'][i] = self.boloname
             param_array['Amplitude'][i] = self.amp
             param_array['xoffset'][i] = self.xoffset
             param_array['yoffset'][i] = self.yoffset
@@ -488,14 +505,15 @@ class macana_plotter:
             param_array['azfwhm Error'][i] = self.azfwhm_err
             param_array['elfwhm Error'][i] = self.elfwhm_err
                 
-        cmap = plt.cm.hot
+        cmap = plt.cm.plasma
         norm = mpl.colors.Normalize(vmin=param_array[color_param].min(), vmax=param_array[color_param].max())  
         for i in range(self.workingDetectors):
             ax.add_artist(Ellipse((param_array['xoffset'][i], param_array['yoffset'][i]), 
             height = param_array['azfwhm'][i], width = param_array['elfwhm'][i], color=cmap(norm(param_array[color_param][i]))))
         ax.set_aspect('equal')
-        ax.set_xlim([self.extent[0], self.extent[1]])
-        ax.set_ylim([self.extent[2], self.extent[3]])
+        scale = 20
+        ax.set_xlim([self.extent[0]+scale, self.extent[1]-scale])
+        ax.set_ylim([self.extent[2]+scale, self.extent[3]-scale])
         
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
@@ -636,12 +654,12 @@ class beammap_analyzer:
         ix, iy = event.xdata, event.ydata
         
         #if event:
-        print('You selected observation %i which corresponds to %s' %(ix, self.beammaps[int(ix)]))
+        print('You selected observation %i which corresponds to %s' %(ix, self.beammaps[int(round(ix))]))
         
         if event.dblclick:
             #Values   
             f1 = plt.figure()
-            plt.title('Fit Values vs Detector number for observation %i' % (int(ix)))
+            plt.title('Fit Values vs Detector number for observation %i' % (int(round(ix))))
         
             f1.canvas.mpl_connect('button_press_event', self.detector_click)
         
@@ -731,7 +749,7 @@ class beammap_analyzer:
     def detector_click(self, event):
         global ix2, iy2, iinaxes2
         ix2, iy2, iinaxes2 = event.xdata, event.ydata, event.inaxes
-        print('This is detector %i ' % (int(ix2)))
+        print('This is detector %i ' % (int(round(ix2))))
         
         if event.dblclick:
             obs = macana_plotter(str(ix))
@@ -747,40 +765,44 @@ class beammap_analyzer:
         self.beammaps = glob.glob(path + '/*')
         self.beam_num = len(self.beammaps)
     
-    def load(self, find_bad = False):
-        #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
-        self.param_array = {}
-        self.param_array['Amplitude'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['xoffset'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['yoffset'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['azfwhm'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['elfwhm'] = np.zeros([self.ndetectors, self.beam_num])
-        
-        self.param_array['Amplitude Error'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['xoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['yoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['azfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
-        self.param_array['elfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
-        
-        #Loop through the observations putting the fit values and errors for each detector into the dictionary.
-        for j in range(self.beam_num):
-            obs = macana_plotter(j)
-            obs.load_nc(self.beammaps[j])
-            for i in range(self.ndetectors):
-                obs.get_gauss_params(detector = i)
+    def load(self, npy_file = None, find_bad = False):
+            if type(npy_file) == str:
+                self.param_array = np.load(npy_file, encoding = 'latin1').item()
+
+            else:
+                #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
+                self.param_array = {}
+                self.param_array['Amplitude'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['xoffset'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['yoffset'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['azfwhm'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['elfwhm'] = np.zeros([self.ndetectors, self.beam_num])
                 
-                self.param_array['Amplitude'][i,j] = obs.amp
-                self.param_array['xoffset'][i,j] = obs.xoffset
-                self.param_array['yoffset'][i,j] = obs.yoffset
-                self.param_array['azfwhm'][i,j] = obs.azfwhm
-                self.param_array['elfwhm'][i,j] = obs.elfwhm
+                self.param_array['Amplitude Error'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['xoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['yoffset Error'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['azfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
+                self.param_array['elfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
                 
-                self.param_array['Amplitude Error'][i,j] = obs.amp_err
-                self.param_array['xoffset Error'][i,j] = obs.xoffset_err
-                self.param_array['yoffset Error'][i,j] = obs.yoffset_err
-                self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
-                self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
-    
+                #Loop through the observations putting the fit values and errors for each detector into the dictionary.
+                for j in range(self.beam_num):
+                    obs = macana_plotter(j)
+                    obs.load_nc(self.beammaps[j])
+                    for i in range(self.ndetectors):
+                        obs.get_gauss_params(detector = i)
+                        
+                        self.param_array['Amplitude'][i,j] = obs.amp
+                        self.param_array['xoffset'][i,j] = obs.xoffset
+                        self.param_array['yoffset'][i,j] = obs.yoffset
+                        self.param_array['azfwhm'][i,j] = obs.azfwhm
+                        self.param_array['elfwhm'][i,j] = obs.elfwhm
+                        
+                        self.param_array['Amplitude Error'][i,j] = obs.amp_err
+                        self.param_array['xoffset Error'][i,j] = obs.xoffset_err
+                        self.param_array['yoffset Error'][i,j] = obs.yoffset_err
+                        self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
+                        self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
+        
     def plot_obs(self, fig_type = 'scatter'):
         #Plots the fit values and errors against the observation number.  
         #Each figure is slightly interactive in that one can click on an 
@@ -792,7 +814,7 @@ class beammap_analyzer:
             if fig_type == 'scatter':
                 plt.grid(True)
                 for i in range(self.ndetectors):
-                    ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=5,
+                    ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=20,
                     marker = 's', c='k')
                 
             elif fig_type == 'bar':
@@ -801,8 +823,10 @@ class beammap_analyzer:
                 for i in range(self.beam_num):
                     max_bars[i] = max(self.param_array[self.param_names[j]][:,i])
                     min_bars[i] = min(self.param_array[self.param_names[j]][:,i])
-                ax.bar(range(self.beam_num), height=max_bars, widht = 0.1)
+                ax.bar(range(self.beam_num), height=max_bars, width = 0.1)
                 ax.bar(range(self.beam_num), height=min_bars, width = 0.1)
+                ax.scatter(range(self.beam_num), np.zeros(self.beam_num), c='k',
+                           marker = 's')
             ax.set_xlabel('observation')
             ax.set_ylabel(self.param_names[j])
             plt.axis('tight')
@@ -811,5 +835,5 @@ class beammap_analyzer:
 plt.close('all')
 beam = beammap_analyzer()
 beam.get_files('/Users/quirkyneku/Documents/TolTEC-Project/test_beams/')
-beam.load()
+beam.load()#'/Users/quirkyneku/Documents/macana_python_plotting/fit_array.npy')
 beam.plot_obs()
