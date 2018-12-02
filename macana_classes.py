@@ -2,8 +2,9 @@ import numpy as np
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
-from matplotlib.widgets import Button, AxesWidget
+from matplotlib.patches import Ellipse, Rectangle
+from mpl_toolkits.mplot3d import Axes3D
+import copy
 
 import netCDF4
 import glob
@@ -120,7 +121,7 @@ class macana_plotter:
         
     Below is an example of each method run in sequence:
         n = 99
-        obs53701 = macana_plotter('53701')
+        obs53701 = macana_plotter()
         obs53701.load_nc('/Users/quirkyneku/Downloads/Toltec/53701pixel.nc')
         obs53701.save_setup(beam_loc = '/Users/quirkyneku/Downloads/Toltec/')
         obs53701.beammap(n, 'Signal', plotting = True, saveon = True, save_name = 'test-beammap')
@@ -134,13 +135,17 @@ class macana_plotter:
     methods for different visual representations and changes to improve 
     and usability add the support for TolTEC beammap plotting."""
     
-    def __init__(self, name):
+    def __init__(self, name = None):
         self.name = name
         print('Welcome to macana_plotter!')
 
         #Some useful variables/controls
         self.rad_to_arcsec = 3600*180/np.pi
         self.close_fig = False
+        
+        self.param_names = ['Amplitude', 'xoffset', 'yoffset', 'Azimuth FWHM', 
+            'Elevation FWHM', 'Amplitude error', 'xoffset error', 'yoffset error', 'Azimuth FWHM error', 
+            'Elevation FWHM error']
         
         print('''------------------------------------------------''')
     
@@ -263,7 +268,7 @@ class macana_plotter:
                 print('Getting fit parameters for detector %i' % (detector))
                 d = detector
         if 'nc_variables' in dir(self):
-            #self.boloname = self.nc_variables['beammapSignal' + str(d)].getncattr('bolo_name')
+            self.boloname = self.nc_variables['beammapSignal' + str(d)].getncattr('bolo_name')
             self.amp = self.nc_variables['beammapSignal' + str(d)].getncattr('amplitude')
             self.azfwhm = self.nc_variables['beammapSignal' + str(d)].getncattr('FWHM_x')
             self.elfwhm = self.nc_variables['beammapSignal' + str(d)].getncattr('FWHM_y')
@@ -438,7 +443,6 @@ class macana_plotter:
                     ax[i].set_xlim(self.xlimits)
                     ax[i].set_ylim(self.ylimits) 
                     del self.gauss
-       
             else:
                 ax[i].axis('off')
     
@@ -465,13 +469,13 @@ class macana_plotter:
         dist2 = (ix - param_array['xoffset'])**2 + (iy - param_array['yoffset'])**2
         index = np.where(dist2 == min(dist2))
         if min(dist2) <10:
-            #print('This is detector %f ' % (param_array['Amplitude'][index[0]]))
-            print('This is detector %d ' % (index[0]))
+            print('This is detector %s ' % (param_array['Bolo Name'][index[0][0]]))
+            #print('This is detector %d ' % (index[0]))
     
     def plot_array(self, color_param, saveon = False, save_name = None):
         print('Making a plot of the array')
         param_array = {}
-        #param_array['Bolo Name'] = np.zeros(self.workingDetectors)
+        param_array['Bolo Name'] = []
         param_array['Amplitude'] = np.zeros(self.workingDetectors)
         param_array['xoffset'] = np.zeros(self.workingDetectors)
         param_array['yoffset'] = np.zeros(self.workingDetectors)
@@ -492,7 +496,7 @@ class macana_plotter:
         for i in range(self.workingDetectors):
             #self.beammap(i,'Signal')
             d = self.get_gauss_params(i)
-            #param_array['Bolo Name'][i] = self.boloname
+            param_array['Bolo Name'].append(self.boloname)
             param_array['Amplitude'][i] = self.amp
             param_array['xoffset'][i] = self.xoffset
             param_array['yoffset'][i] = self.yoffset
@@ -511,7 +515,7 @@ class macana_plotter:
             ax.add_artist(Ellipse((param_array['xoffset'][i], param_array['yoffset'][i]), 
             height = param_array['azfwhm'][i], width = param_array['elfwhm'][i], color=cmap(norm(param_array[color_param][i]))))
         ax.set_aspect('equal')
-        scale = 20
+        scale = 0
         ax.set_xlim([self.extent[0]+scale, self.extent[1]-scale])
         ax.set_ylim([self.extent[2]+scale, self.extent[3]-scale])
         
@@ -537,9 +541,6 @@ class macana_plotter:
     def fit_hists(self, bins = 25, saveon = None, save_name = False):
         print('Plotting histograms of all fit parameters')
         param_array = np.zeros([self.workingDetectors, 10])
-        param_names = ['Amplitude', 'xoffset', 'yoffset', 'Azimuth FWHM', 
-                    'Elevation FWHM', 'Amplitude error', 'xoffset error', 'yoffset error', 'Azimuth FWHM error', 
-                    'Elevation FWHM error']
 
         for i in range(self.workingDetectors):
             #self.beammap(i,'Signal')
@@ -560,14 +561,14 @@ class macana_plotter:
             plt.figure()
             plt.hist(param_array[:,i], bins = bins, histtype = 'stepfilled', facecolor = 'w',
                      edgecolor = 'k')
-            plt.xlabel(param_names[i])
+            plt.xlabel(self.param_names[i])
             plt.ylabel('N')
         
             if saveon == True:
                 if 'array_plot_loc' in dir(self):
                     if type(save_name) == str:
                         plt.savefig(self.hist_plot_loc + save_name)
-                        print(' >Figure saved to ' + self.array_plot_loc + save_name + '_' + param_names[i])
+                        print(' >Figure saved to ' + self.array_plot_loc + save_name + '_' + self.param_names[i])
                     else:
                         print('    >invalid filename')
                 else:
@@ -639,110 +640,410 @@ class beammap_analyzer:
         #These are the "reasonable" limits for the fit errors.  If the fit errors are larger, the observation number and detector will
         #output in the loop below.
         self.amp_lim = 0.01
-        self.xoffset_lim = 1.0
-        self.yoffset_lim = 1.0
-        self.azfwhm_lim = 1.0
-        self.elfwhm_lim = 1.0
+        self.xoffset_lim = 100.0
+        self.yoffset_lim = 100.0
+        self.azfwhm_lim = 10.0
+        self.elfwhm_lim = 10.0
+        
+        self.amp_err_lim = 0.0001
+        self.xoffset_err_lim = 1.0
+        self.yoffset_err_lim = 1.0
+        self.azfwhm_err_lim = 1.0
+        self.elfwhm_err_lim = 1.0
 
         #Names for plotting.
         self.param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 
         'elfwhm', 'Amplitude Error', 'xoffset Error', 'yoffset Error',
               'azfwhm Error', 'elfwhm Error']
         
+        self.nparams = len(self.param_names)
+        
+        self.selected = False
+        self.found = False
+    
+    def setup_detector_figs(self, fig_type):
+        #Values
+        f1 = plt.figure()
+        #plt.title('Fit Values vs Detector number for observation %i' % (int(round(ix))))
+        
+        ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax1.aname = self.param_names[0]
+        
+        ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax2.aname = self.param_names[1]
+        
+        ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax3.aname = self.param_names[2]
+        
+        ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax4.aname = self.param_names[3]
+        
+        ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        ax5.aname = self.param_names[4]
+        
+        #Errors
+        f2 = plt.figure()
+        #plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
+        
+        ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax6.aname = self.param_names[5]
+        
+        ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax7.aname = self.param_names[6]
+        
+        ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax8.aname = self.param_names[7]
+        
+        ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax9.aname = self.param_names[8]
+        
+        ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        ax10.aname = self.param_names[9]
+        
+        if fig_type == 'obs_line':
+            ax1.set_ylabel('Amplitude')
+            ax1.set_xlabel('Detector number')
+            
+            ax2.set_ylabel('xoffset')
+            ax2.set_xlabel('Detector number')
+            
+            ax3.set_ylabel('yoffset')
+            ax3.set_xlabel('Detector number')
+            
+            ax4.set_ylabel('azfwhm')
+            ax4.set_xlabel('Detector number')
+            
+            ax5.set_ylabel('elfwhm')
+            ax5.set_xlabel('Detector number')
+            
+            ax6.set_ylabel('Amplitude error')
+            ax6.set_xlabel('Detector number')
+            
+            ax7.set_ylabel('xoffset error')
+            ax7.set_xlabel('Detector number')
+            
+            ax8.set_ylabel('yoffset error')
+            ax8.set_xlabel('Detector number')
+            
+            ax9.set_ylabel('azfwhm error')
+            ax9.set_xlabel('Detector number')
+            
+            ax10.set_ylabel('elfwhm error')
+            ax10.set_xlabel('Detector number')
+            
+        if fig_type == 'detec_line':
+            ax1.set_ylabel('Amplitude')
+            ax1.set_xlabel('Observation number')
+            
+            ax2.set_ylabel('xoffset')
+            ax2.set_xlabel('Observation number')
+            
+            ax3.set_ylabel('yoffset')
+            ax3.set_xlabel('Observation number')
+            
+            ax4.set_ylabel('azfwhm')
+            ax4.set_xlabel('Observation number')
+            
+            ax5.set_ylabel('elfwhm')
+            ax5.set_xlabel('Observation number')
+            
+            ax6.set_ylabel('Amplitude error')
+            ax6.set_xlabel('Observation number')
+            
+            ax7.set_ylabel('xoffset error')
+            ax7.set_xlabel('Observation number')
+            
+            ax8.set_ylabel('yoffset error')
+            ax8.set_xlabel('Observation number')
+            
+            ax9.set_ylabel('azfwhm error')
+            ax9.set_xlabel('Observation number')
+            
+            ax10.set_ylabel('elfwhm error')
+            ax10.set_xlabel('Observation number')
+            
+        if fig_type == 'hist':
+            ax1.set_ylabel('N')
+            ax1.set_xlabel('Amplitude')
+            
+            ax2.set_ylabel('N')
+            ax2.set_xlabel('xoffset')
+            
+            ax3.set_ylabel('N')
+            ax3.set_xlabel('yoffset')
+            
+            ax4.set_ylabel('N')
+            ax4.set_xlabel('azfwhm')
+            
+            ax5.set_ylabel('N')
+            ax5.set_xlabel('elfwhm')
+            
+            ax6.set_ylabel('N')
+            ax6.set_xlabel('Amplitude Error')
+            
+            ax7.set_ylabel('N')
+            ax7.set_xlabel('xoffset Error')
+            
+            ax8.set_ylabel('N')
+            ax8.set_xlabel('yoffset Error')
+            
+            ax9.set_ylabel('N')
+            ax9.set_xlabel('azfwhm error')
+            
+            ax10.set_ylabel('N')
+            ax10.set_xlabel('elfwhm error')
+    
+        return f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10
+        
     def obs_click(self, event):
         global ix, iy
         ix, iy = event.xdata, event.ydata
         
-        #if event:
         print('You selected observation %i which corresponds to %s' %(ix, self.beammaps[int(round(ix))]))
         
-        if event.dblclick:
-            #Values   
-            f1 = plt.figure()
-            plt.title('Fit Values vs Detector number for observation %i' % (int(round(ix))))
+        if event.button == 1:
+            if event.dblclick:
+                global plot_type
+                plot_type = 'obs_line'
+                f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
+                f1.canvas.mpl_connect('button_press_event', self.detector_click)
+                f2.canvas.mpl_connect('button_press_event', self.detector_click)
+                
+                #Values 
+                ax1.plot(range(self.ndetectors), self.plot_array['Amplitude'][:,int(ix)], c='k')
+                ax2.plot(range(self.ndetectors), self.plot_array['xoffset'][:,int(ix)], c='k')
+                ax3.plot(range(self.ndetectors), self.plot_array['yoffset'][:,int(ix)], c='k')
+                ax4.plot(range(self.ndetectors), self.plot_array['azfwhm'][:,int(ix)], c='k')
+                ax5.plot(range(self.ndetectors), self.plot_array['elfwhm'][:,int(ix)], c='k')
+                
+                f1.tight_layout()
+            
+                #Errors            
+                ax6.plot(range(self.ndetectors), self.plot_array['Amplitude Error'][:,int(ix)], c='k')
+                ax7.plot(range(self.ndetectors), self.plot_array['xoffset Error'][:,int(ix)], c='k')
+                ax8.plot(range(self.ndetectors), self.plot_array['yoffset Error'][:,int(ix)], c='k')
+                ax9.plot(range(self.ndetectors), self.plot_array['azfwhm Error'][:,int(ix)], c='k')
+                ax10.plot(range(self.ndetectors), self.plot_array['elfwhm Error'][:,int(ix)], c='k')
+            
+                f2.tight_layout()
         
-            f1.canvas.mpl_connect('button_press_event', self.detector_click)
+        if event.button == 3:
+            if event.dblclick:
+                global plot_type
+                plot_type = 'hist'
+                f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
+                f1.canvas.mpl_connect('button_press_event', self.hist_click)
+                f2.canvas.mpl_connect('button_press_event', self.hist_click)
+                
+                #Values
+                indices = np.where(self.plot_array['Amplitude'] != np.inf)
+                n1, b1, _ = ax1.hist(self.plot_array['Amplitude'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['xoffset'] != np.inf)
+                n2, b2, _ = ax2.hist(self.plot_array['xoffset'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['yoffset'] != np.inf)
+                n3, b3, _ = ax3.hist(self.plot_array['yoffset'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['azfwhm'] != np.inf)
+                n4, b4, _ = ax4.hist(self.plot_array['azfwhm'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['elfwhm'] != np.inf)
+                n5, b5, _ = ax5.hist(self.plot_array['elfwhm'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+    
+                f1.tight_layout()
+                
+                #Errors            
+                indices = np.where(self.plot_array['Amplitude Error'] != np.inf)
+                n6, b6, _ = ax6.hist(self.plot_array['Amplitude Error'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['xoffset Error'] != np.inf)
+                n7, b7, _ = ax7.hist(self.plot_array['xoffset Error'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['yoffset Error'] != np.inf)
+                n8, b8, _ = ax8.hist(self.plot_array['yoffset Error'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['azfwhm Error'] != np.inf)
+                n9, b9, _ = ax9.hist(self.plot_array['azfwhm Error'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['elfwhm Error'] != np.inf)
+                n10, b10, _ = ax10.hist(self.plot_array['elfwhm Error'][indices[0],int(ix)], bins = 25, color='k', histtype = 'step')
+            
+                f2.tight_layout()
+                
+                global bins_dict 
+                
+                bins_dict = {}
+                bins_dict[self.param_names[0]] = b1
+                bins_dict[self.param_names[1]] = b2
+                bins_dict[self.param_names[2]] = b3
+                bins_dict[self.param_names[3]] = b4
+                bins_dict[self.param_names[4]] = b5
+                bins_dict[self.param_names[5]] = b6
+                bins_dict[self.param_names[6]] = b7
+                bins_dict[self.param_names[7]] = b8
+                bins_dict[self.param_names[8]] = b9
+                bins_dict[self.param_names[9]] = b10
         
-            ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
-            ax1.aname = self.param_names[0]
-            
-            ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
-            ax2.aname = self.param_names[1]
-            
-            ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
-            ax3.aname = self.param_names[2]
-            
-            ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
-            ax4.aname = self.param_names[3]
-            
-            ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
-            ax5.aname = self.param_names[4]
-            
-            ax1.plot(range(self.ndetectors), self.param_array['Amplitude'][:,int(ix)], c='k')
-            ax1.set_ylabel('Amplitude')
-            ax1.set_xlabel('Detector number')
+        plt.show()
+    
+    def detec_click(self, event):
+        global ix, iy
+        ix, iy = event.xdata, event.ydata
         
-            ax2.plot(range(self.ndetectors), self.param_array['xoffset'][:,int(ix)], c='k')
-            ax2.set_ylabel('xoffset')
-            ax2.set_xlabel('Detector number')
+        print('You selected detector %i' %(ix))
         
-            ax3.plot(range(self.ndetectors), self.param_array['yoffset'][:,int(ix)], c='k')
-            ax3.set_ylabel('yoffset')
-            ax3.set_xlabel('Detector number')
+        if event.button == 1:
+            if event.dblclick:
+                global plot_type
+                plot_type = 'detec_line'
+                f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
+                f1.canvas.mpl_connect('button_press_event', self.observation_click)
+                f2.canvas.mpl_connect('button_press_event', self.observation_click)
+                
+                #Values 
+                ax1.plot(range(self.beam_num), self.plot_array['Amplitude'][int(ix),:], c='k')
+                ax2.plot(range(self.beam_num), self.plot_array['xoffset'][int(ix),:], c='k')
+                ax3.plot(range(self.beam_num), self.plot_array['yoffset'][int(ix),:], c='k')
+                ax4.plot(range(self.beam_num), self.plot_array['azfwhm'][int(ix),:], c='k')
+                ax5.plot(range(self.beam_num), self.plot_array['elfwhm'][int(ix),:], c='k')
+                
+                f1.tight_layout()
+            
+                #Errors            
+                ax6.plot(range(self.beam_num), self.plot_array['Amplitude Error'][int(ix),:], c='k')
+                ax7.plot(range(self.beam_num), self.plot_array['xoffset Error'][int(ix),:], c='k')
+                ax8.plot(range(self.beam_num), self.plot_array['yoffset Error'][int(ix),:], c='k')
+                ax9.plot(range(self.beam_num), self.plot_array['azfwhm Error'][int(ix),:], c='k')
+                ax10.plot(range(self.beam_num), self.plot_array['elfwhm Error'][int(ix),:], c='k')
+            
+                f2.tight_layout()
         
-            ax4.plot(range(self.ndetectors), self.param_array['azfwhm'][:,int(ix)], c='k')
-            ax4.set_ylabel('azfwhm')
-            ax4.set_xlabel('Detector number')
+        if event.button == 3:
+            if event.dblclick:
+                global plot_type
+                plot_type = 'hist'
+                f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
+                f1.canvas.mpl_connect('button_press_event', self.hist_click)
+                f2.canvas.mpl_connect('button_press_event', self.hist_click)
+                
+                #Values 
+                indices = np.where(self.plot_array['Amplitude'][int(ix),:] != np.inf)
+                n1, b1, _ = ax1.hist(self.plot_array['Amplitude'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['xoffset'][int(ix),:] != np.inf)
+                n2, b2, _ = ax2.hist(self.plot_array['xoffset'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['yoffset'][int(ix),:] != np.inf)
+                n3, b3, _ = ax3.hist(self.plot_array['yoffset'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['azfwhm'][int(ix),:] != np.inf)
+                n4, b4, _ = ax4.hist(self.plot_array['azfwhm'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['elfwhm'][int(ix),:] != np.inf)
+                n5, b5, _ = ax5.hist(self.plot_array['elfwhm'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+    
+                f1.tight_layout()
+                
+                #Errors            
+                indices = np.where(self.plot_array['Amplitude Error'][int(ix),:] != np.inf)
+                n6, b6, _ = ax6.hist(self.plot_array['Amplitude Error'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['xoffset Error'][int(ix),:] != np.inf)
+                n7, b7, _ = ax7.hist(self.plot_array['xoffset Error'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['yoffset Error'][int(ix),:] != np.inf)
+                n8, b8, _ = ax8.hist(self.plot_array['yoffset Error'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['azfwhm Error'][int(ix),:] != np.inf)
+                n9, b9, _ = ax9.hist(self.plot_array['azfwhm Error'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
+                
+                indices = np.where(self.plot_array['elfwhm Error'][int(ix),:] != np.inf)
+                n10, b10, _ = ax10.hist(self.plot_array['elfwhm Error'][int(ix),indices[0]], bins = 25, color='k', histtype = 'step')
             
-            ax5.plot(range(self.ndetectors), self.param_array['elfwhm'][:,int(ix)], c='k')
-            ax5.set_ylabel('elfwhm')
-            ax5.set_xlabel('Detector number')
-            
-            plt.tight_layout()
-            
-            #Errors
-            f2 = plt.figure()
-            plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
+                f2.tight_layout()
+
+                global bins_dict 
+                
+                bins_dict = {}
+                bins_dict[self.param_names[0]] = b1
+                bins_dict[self.param_names[1]] = b2
+                bins_dict[self.param_names[2]] = b3
+                bins_dict[self.param_names[3]] = b4
+                bins_dict[self.param_names[4]] = b5
+                bins_dict[self.param_names[5]] = b6
+                bins_dict[self.param_names[6]] = b7
+                bins_dict[self.param_names[7]] = b8
+                bins_dict[self.param_names[8]] = b9
+                bins_dict[self.param_names[9]] = b10
+                    
+        plt.show()
         
-            f2.canvas.mpl_connect('button_press_event', self.detector_click)
+    def hist_click(self,event):
+        global ix3, iy3, iinaxes3
+        ix3, iy3, iinaxes3 = event.xdata, event.ydata, event.inaxes
         
-            ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
-            ax6.aname = self.param_names[5]
+        print('''------------------------------------------------''')
+        print('You selected %s = %f' % (iinaxes3.aname, ix3))
+
+        if 'ix' in globals():
+            if event.dblclick:
+                rows, bin_width, lower_bin, upper_bin = self.find_on_hist()
+                rows = rows[0]
+                if self.selected:
+                    self.R.remove()
+                self.R = iinaxes3.add_artist(Rectangle((lower_bin,0),width=bin_width,
+                    height=len(rows), color='r'))
+                self.selected = True
+                plt.draw()
+                print('Beammap: %s ' % (self.beammaps[int(round(ix))]))
+                for i in range(len(rows)):
+                    print('   >Detector: %s ' % (rows[i]))
+        else:
+            if event.dblclick:
+                rows, cols, bin_width, lower_bin, upper_bin = self.find_on_hist()
+                if self.selected:
+                    self.R.remove()
+                self.R = iinaxes3.add_artist(Rectangle((lower_bin,0),width=bin_width,
+                    height=len(rows), color='r'))
+                self.selected = True
+                plt.draw()
+                cols, rows = zip(*sorted(zip(cols, rows)))
+                for i in range(len(rows)):
+                    print('''------------------------------------------------''')
+                    print('Beammap: %s ' % (self.beammaps[cols[i]]))
+                    print('   >Detector: %s ' % (rows[i]))
+    
+    def find_on_hist(self):
+        bin_edges = bins_dict[iinaxes3.aname]
+        bin_width = bin_edges[1] - bin_edges[0]
+        index = np.where(abs(bin_edges - ix3) == min(abs(bin_edges - ix3)))
+        closest_bin = bin_edges[index[0]]
+        if closest_bin > ix3:
+            upper_bin = closest_bin
+            lower_bin = bin_edges[index[0]-1]
             
-            ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
-            ax7.aname = self.param_names[6]
-            
-            ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
-            ax8.aname = self.param_names[7]
-            
-            ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
-            ax9.aname = self.param_names[8]
-            
-            ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
-            ax10.aname = self.param_names[9]
-            
-            ax6.plot(range(self.ndetectors), self.param_array['Amplitude Error'][:,int(ix)], c='k')
-            ax6.set_ylabel('Amplitude error')
-            ax6.set_xlabel('Detector number')
+        elif closest_bin < ix3:
+            upper_bin = bin_edges[index[0]+1]
+            lower_bin = closest_bin
+                
+        bin_mid = np.mean([lower_bin, upper_bin])
+                
+        if 'ix' in globals():
+            rows = np.where(abs(self.plot_array[iinaxes3.aname][:,int(round(ix))] - bin_mid) < bin_width/2.0)
+            return rows, bin_width, lower_bin, upper_bin
+        else:
+            rows, cols = np.where(abs(self.plot_array[iinaxes3.aname] - bin_mid) < bin_width/2.0)
+            return rows, cols, bin_width, lower_bin, upper_bin
+    
+    def imshow_click(self,event):
+        global ix4, iy4
+        ix4, iy4 = event.xdata, event.ydata
         
-            ax7.plot(range(self.ndetectors), self.param_array['xoffset Error'][:,int(ix)], c='k')
-            ax7.set_ylabel('xoffset error')
-            ax7.set_xlabel('Detector number')
+        print('You selected observation %i which corresponds to %s' %(iy4, self.beammaps[int(round(iy4))]))
+        print('This is detector %i ' % (int(round(ix4))))
+
         
-            ax8.plot(range(self.ndetectors), self.param_array['yoffset Error'][:,int(ix)], c='k')
-            ax8.set_ylabel('yoffset error')
-            ax8.set_xlabel('Detector number')
-        
-            ax9.plot(range(self.ndetectors), self.param_array['azfwhm Error'][:,int(ix)], c='k')
-            ax9.set_ylabel('azfwhm error')
-            ax9.set_xlabel('Detector number')
-            
-            ax10.plot(range(self.ndetectors), self.param_array['elfwhm Error'][:,int(ix)], c='k')
-            ax10.set_ylabel('elfwhm error')
-            ax10.set_xlabel('Detector number')
-        
-            plt.tight_layout()
-            plt.show()
     
     #For the figures produced by "obs_click", this outputs the nearest detector
     #number to the clicked point.
@@ -751,23 +1052,31 @@ class beammap_analyzer:
         ix2, iy2, iinaxes2 = event.xdata, event.ydata, event.inaxes
         print('This is detector %i ' % (int(round(ix2))))
         
-        if event.dblclick:
-            obs = macana_plotter(str(ix))
-            obs.load_nc(self.beammaps[int(ix)])
-            obs.beammap(int(ix2), 'Signal', plotting=True)
-        
+        if event.button == 1:
+            if event.dblclick:
+                obs = macana_plotter(str(ix))
+                obs.load_nc(self.beammaps[int(ix)])
+                obs.beammap(int(ix2), 'Signal', plotting=True)
+            
         if event.button == 3:
             obs = macana_plotter(str(ix))
             obs.load_nc(self.beammaps[int(ix)])
             obs.plot_array(iinaxes2.aname)
     
+    def observation_click(self, event):
+        global ix2, iy2, iinaxes2
+        ix2, iy2, iinaxes2 = event.xdata, event.ydata, event.inaxes
+        print('You selected observation %i which corresponds to %s' %(ix2, self.beammaps[int(round(ix2))]))
+    
     def get_files(self,path):
         self.beammaps = glob.glob(path + '/*')
+        self.beammaps.sort()
         self.beam_num = len(self.beammaps)
     
     def load(self, npy_file = None, find_bad = False):
             if type(npy_file) == str:
                 self.param_array = np.load(npy_file, encoding = 'latin1').item()
+                self.beam_num = len(self.param_array['Amplitude'][0,:])
 
             else:
                 #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
@@ -803,37 +1112,191 @@ class beammap_analyzer:
                         self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
                         self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
         
-    def plot_obs(self, fig_type = 'scatter'):
+    def finder(self, values = True, errors = True, exclude = 'bad', recursive = False, print_bad = False):
+        print('''------------------------------------------------''')
+        print('Don''t forget to set the limits!  Current limits are set to: \n')
+        print('%s %.3f' % ('Amplitude limit:', self.amp_lim))
+        print('%s %7.3f' % ('Xoffset limit:', self.xoffset_lim))
+        print('%s %7.3f' % ('Yoffset limit:', self.yoffset_lim))
+        print('%s %8.3f' % ('Azfwhm limit:', self.azfwhm_lim))
+        print('%s %8.3f \n' % ('Elfwhm limit:', self.elfwhm_lim))
+        
+        print('%s %.3f' % ('Amplitude error limit:', self.amp_err_lim))
+        print('%s %7.3f' % ('Xoffset error limit:', self.xoffset_err_lim))
+        print('%s %7.3f' % ('Yoffset error limit:', self.yoffset_err_lim))
+        print('%s %8.3f' % ('Azfwhm error limit:', self.azfwhm_err_lim))
+        print('%s %8.3f' % ('Elfwhm error limit:', self.elfwhm_err_lim))
+        
+        lim_array = np.array([self.amp_lim, self.xoffset_lim, self.yoffset_lim, 
+                              self.azfwhm_lim, self.elfwhm_lim, self.amp_err_lim, 
+                              self.xoffset_err_lim, self.yoffset_err_lim,
+                              self.azfwhm_err_lim, self.elfwhm_err_lim])
+            
+        if recursive == False:
+            self.bad_array = copy.deepcopy(self.param_array)
+            if 'bad_array' not in dir(self):
+                print('cannot do recursive. Have you run finder once yet?')
+        
+        for i in range(self.nparams):
+            if exclude == 'bad':
+                rows, cols = np.where(abs(self.param_array[self.param_names[i]]) > lim_array[i])
+            elif exclude == 'good':
+                rows, cols = np.where(abs(self.param_array[self.param_names[i]]) <= lim_array[i])
+            for j in range(len(rows)):
+                self.bad_array[self.param_names[i]][rows[j], cols[j]] = np.inf
+                if print_bad == True:
+                    print('Beammap: %s ' % (self.beammaps[cols[j]]))
+                    print('   >Detector: %s ' % (rows[j]))
+        
+        return self.bad_array           
+                    
+    def excluder(self,exclude):
+        if exclude == 'None':
+            return self.param_array
+            
+        elif exclude == 'bad':
+            return self.finder(values = True, errors = True, exclude = 'bad', print_bad = False)      
+        
+        elif exclude == 'good':
+            return self.finder(values = True, errors = True, exclude = 'good', print_bad = False)      
+     
+    def plot_obs(self, fig_type = 'obs', plot_types = 'scatter', exclude = None, bins = 25):
         #Plots the fit values and errors against the observation number.  
         #Each figure is slightly interactive in that one can click on an 
         #observation to open up additional figures for that observation.  See intro.
-        for j in range(len(self.param_names)):
-            f = plt.figure(j)
-            f.canvas.mpl_connect('button_press_event', self.obs_click)
-            ax = f.add_subplot(111)
-            if fig_type == 'scatter':
-                plt.grid(True)
-                for i in range(self.ndetectors):
-                    ax.scatter(range(self.beam_num), self.param_array[self.param_names[j]][i,:], s=20,
-                    marker = 's', c='k')
+        
+        cmap = plt.cm.plasma
+        
+        self.plot_array = self.excluder(exclude)
                 
-            elif fig_type == 'bar':
-                max_bars = np.zeros(self.beam_num)
-                min_bars = np.zeros(self.beam_num)
-                for i in range(self.beam_num):
-                    max_bars[i] = max(self.param_array[self.param_names[j]][:,i])
-                    min_bars[i] = min(self.param_array[self.param_names[j]][:,i])
-                ax.bar(range(self.beam_num), height=max_bars, width = 0.1)
-                ax.bar(range(self.beam_num), height=min_bars, width = 0.1)
-                ax.scatter(range(self.beam_num), np.zeros(self.beam_num), c='k',
-                           marker = 's')
-            ax.set_xlabel('observation')
-            ax.set_ylabel(self.param_names[j])
-            plt.axis('tight')
+        if fig_type == 'obs':
+            norm = mpl.colors.Normalize(0.0, self.ndetectors) 
+            for j in range(len(self.param_names)):
+                f = plt.figure(j)
+                f.canvas.mpl_connect('button_press_event', self.obs_click)
+                if plot_types == '3d':
+                    ax = f.add_subplot(111, projection='3d')
+                else:
+                    ax = f.add_subplot(111)
+                
+                if plot_types == 'scatter':
+                    plt.grid(True)
+                    for i in range(self.ndetectors):
+                        ax.scatter(range(self.beam_num), self.plot_array[self.param_names[j]][i,:], s=20,
+                        marker = 's', color=cmap(norm(i)))
+                        
+                elif plot_types == 'bar':
+                    max_bars = np.zeros(self.beam_num)
+                    min_bars = np.zeros(self.beam_num)
+                    for i in range(self.beam_num):
+                        max_bars[i] = max(self.plot_array[self.param_names[j]][:,i])
+                        min_bars[i] = min(self.plot_array[self.param_names[j]][:,i])
+                    ax.bar(range(self.beam_num), height=max_bars)
+                    ax.bar(range(self.beam_num), height=min_bars)
+                    
+                elif plot_types == '3d':
+                    plt.grid(True)
+                    for i in range(self.beam_num):
+                        ax.scatter(range(self.beam_num), self.plot_array[self.param_names[j]][i,:], i, s=20,
+                        marker = 's', color=cmap(norm(i)))
+                
+                ax.set_xlabel('observation')
+                ax.set_ylabel(self.param_names[j])
+                plt.axis('tight')
+        
+        elif fig_type == 'detec':
+            norm = mpl.colors.Normalize(0.0, self.beam_num) 
+            
+            for j in range(len(self.param_names)):
+                f = plt.figure(j)
+                f.canvas.mpl_connect('button_press_event', self.detec_click)
+                if plot_types == '3d':
+                    ax = f.add_subplot(111, projection='3d')
+                else:
+                    ax = f.add_subplot(111)
+                    
+                if plot_types == 'scatter':
+                    plt.grid(True)
+                    for i in range(self.beam_num):
+                        ax.scatter(range(self.ndetectors), self.plot_array[self.param_names[j]][:,i], s=20,
+                        marker = 's', color=cmap(norm(i)))
+                    
+                elif plot_types == 'bar':
+                    max_bars = np.zeros(self.ndetectors)
+                    min_bars = np.zeros(self.ndetectors)
+                    for i in range(self.ndetectors):
+                        max_bars[i] = max(self.plot_array[self.param_names[j]][i,:])
+                        min_bars[i] = min(self.plot_array[self.param_names[j]][i,:])
+                    ax.bar(range(self.ndetectors), height=max_bars)
+                    ax.bar(range(self.ndetectors), height=min_bars)
+                
+                elif plot_types == '3d':
+                    plt.grid(True)
+                    for i in range(self.beam_num):
+                        ax.scatter(range(self.ndetectors), self.plot_array[self.param_names[j]][:,i], zs = i, s=20,
+                        marker = 's', color=cmap(norm(i)))
+                        
+                ax.set_xlabel('Detector Number')
+                ax.set_ylabel(self.param_names[j])
+                plt.axis('tight')
+        
+        elif fig_type == 'hist':
+            params_ravel = {}
+            for i in range(self.nparams):
+                params_ravel[self.param_names[i]] = np.ravel(self.plot_array[self.param_names[i]])
+                params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(params_ravel[self.param_names[i]]!=np.inf)]
+            f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=fig_type)
+            f1.canvas.mpl_connect('button_press_event', self.hist_click)
+            f2.canvas.mpl_connect('button_press_event', self.hist_click)
+            
+            #Values 
+            n1, b1, _ = ax1.hist(params_ravel['Amplitude'], bins = bins, color='k', histtype = 'step')
+            n2, b2, _ = ax2.hist(params_ravel['xoffset'], bins = bins, color='k', histtype = 'step')
+            n3, b3, _ = ax3.hist(params_ravel['yoffset'], bins = bins, color='k', histtype = 'step')
+            n4, b4, _ = ax4.hist(params_ravel['azfwhm'], bins = bins, color='k', histtype = 'step')
+            n5, b5, _ = ax5.hist(params_ravel['elfwhm'], bins = bins, color='k', histtype = 'step')
+
+            f1.tight_layout()
+            
+            #Errors            
+            n6, b6, _ = ax6.hist(params_ravel['Amplitude Error'], bins = bins, color='k', histtype = 'step')
+            n7, b7, _ = ax7.hist(params_ravel['xoffset Error'], bins = bins, color='k', histtype = 'step')
+            n8, b8, _ = ax8.hist(params_ravel['yoffset Error'], bins = bins, color='k', histtype = 'step')
+            n9, b9, _ = ax9.hist(params_ravel['azfwhm Error'], bins = bins, color='k', histtype = 'step')
+            n10, b10, _ = ax10.hist(params_ravel['elfwhm Error'], bins = bins, color='k', histtype = 'step')
+        
+            f2.tight_layout()
+
+            global bins_dict 
+            bins_dict = {}
+            bins_dict[self.param_names[0]] = b1
+            bins_dict[self.param_names[1]] = b2
+            bins_dict[self.param_names[2]] = b3
+            bins_dict[self.param_names[3]] = b4
+            bins_dict[self.param_names[4]] = b5
+            bins_dict[self.param_names[5]] = b6
+            bins_dict[self.param_names[6]] = b7
+            bins_dict[self.param_names[7]] = b8
+            bins_dict[self.param_names[8]] = b9
+            bins_dict[self.param_names[9]] = b10
+        
+        elif fig_type == 'imshow':            
+            for i in range(self.nparams):
+                f = plt.figure(i)
+                f.canvas.mpl_connect('button_press_event', self.imshow_click)
+                ax = f.add_subplot(111)
+                img = ax.imshow(self.plot_array[self.param_names[i]], origin = 'lower')
+                ax.set_xlabel('Observation')
+                ax.set_ylabel('Detector')
+                f.colorbar(img, ax = ax, label = self.param_names[i])
+            
         plt.show()
 
 plt.close('all')
 beam = beammap_analyzer()
-beam.get_files('/Users/quirkyneku/Documents/TolTEC-Project/test_beams/')
+beam.get_files('/Users/quirkyneku/Documents/TolTEC-Project/beammaps_out/')
 beam.load()#'/Users/quirkyneku/Documents/macana_python_plotting/fit_array.npy')
-beam.plot_obs()
+beam.finder(print_bad = False)
+beam.plot_obs(fig_type = 'imshow', plot_types = 'scatter', bins=50, exclude = 'bad')
+
+plt.show()
