@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.io.idl import readsav
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -135,9 +136,12 @@ class macana_plotter:
     methods for different visual representations and changes to improve 
     and usability add the support for TolTEC beammap plotting."""
     
-    def __init__(self, name = None):
+    def __init__(self, name = None, quiet = False):
         self.name = name
-        print('Welcome to macana_plotter!')
+        self.quiet = quiet
+        
+        if self.quiet == False:
+            print('Welcome to macana_plotter!')
 
         #Some useful variables/controls
         self.rad_to_arcsec = 3600*180/np.pi
@@ -147,7 +151,8 @@ class macana_plotter:
             'Elevation FWHM', 'Amplitude error', 'xoffset error', 'yoffset error', 'Azimuth FWHM error', 
             'Elevation FWHM error']
         
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
     
     def save_setup(self, beam_loc = None, gauss_loc = None, resid_loc = None,
                          corner_loc = None, mosaic_loc = None, 
@@ -173,7 +178,8 @@ class macana_plotter:
                 self.array_plot_loc = array_plot_loc
     
     def load_nc(self, ncfile):
-        print('Loading nc file %s' % (ncfile))
+        if self.quiet == False:
+            print('Loading nc file %s' % (ncfile))
         self.nc = netCDF4.Dataset(ncfile)
         self.nc_methods = dir(self.nc)
 
@@ -186,7 +192,8 @@ class macana_plotter:
         else:
             print('    Cannot find variables')
                 
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
         
     def get_rows_cols(self):
         self.row = self.nc.variables['rowCoordsPhys'][:]*self.rad_to_arcsec
@@ -218,7 +225,8 @@ class macana_plotter:
     def beammap(self, detector, maptype = None, region=None, plotting = False, saveon = False, save_name = None):
         self.maptype = maptype
         self.detector = detector
-        print('Getting beammap ' + self.maptype + ' for detector %i' % (detector))
+        if self.quiet == False:
+            print('Getting beammap ' + self.maptype + ' for detector %i' % (detector))
         self.var = 'beammap' + self.maptype + str(detector)
         self.matrix = np.array(self.nc.variables[self.var])
         
@@ -229,7 +237,8 @@ class macana_plotter:
         self.matrix_rot = np.rot90(self.matrix[:])
                 
         if plotting == True:
-            print('    >Plotting beammap ' + self.maptype + ' for detector %i' % (detector))
+            if self.quiet == False:
+                print('    >Plotting beammap ' + self.maptype + ' for detector %i' % (detector))
             
             self.zoom(region)
             
@@ -258,14 +267,15 @@ class macana_plotter:
     def get_gauss_params(self, detector = None):
         if detector == None:
             if 'detector' in dir(self):
-                print('yeah')
-                print('Getting fit parameters for detector %i' % (self.detector))
+                if self.quiet == False:
+                    print('Getting fit parameters for detector %i' % (self.detector))
                 d = self.detector
             else:
                 print('    >No beammap specified and no beammap stored')
         else:
             if type(detector) == int:
-                print('Getting fit parameters for detector %i' % (detector))
+                if self.quiet == False:
+                    print('Getting fit parameters for detector %i' % (detector))
                 d = detector
         if 'nc_variables' in dir(self):
             self.boloname = self.nc_variables['beammapSignal' + str(d)].getncattr('bolo_name')
@@ -285,7 +295,8 @@ class macana_plotter:
             
     def make_gauss(self, region=None, plotting = False, saveon = False, save_name = None):
         detector = self.get_gauss_params()
-        print('Making map of gauss fit parameters for detector %i' % (detector))
+        if self.quiet == False:
+            print('Making map of gauss fit parameters for detector %i' % (detector))
 
         self.gauss = np.zeros([self.nrows, self.ncols])
                     
@@ -321,7 +332,8 @@ class macana_plotter:
     
 
     def gauss_resid(self, region=None, plotting = False, saveon = False, save_name = None):
-        print('Calculating gauss fit residual for detector %i' % (self.detector))
+        if self.quiet == False:
+            print('Calculating gauss fit residual for detector %i' % (self.detector))
         if self.maptype == 'Signal':
             if 'matrix' in dir(self):
                 if 'gauss' not in dir(self):
@@ -360,7 +372,8 @@ class macana_plotter:
                             plt.close()
         else:
             print('    >This is not a signal beammap')
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
         
     def get_1D_dist(self):
         #Integration for corner plot.
@@ -375,8 +388,9 @@ class macana_plotter:
     
         return az_integ, el_integ
         
-    def plot_corner(self, bins = 25, region=None, saveon = False, save_name = None):
-        print('Making a corner plot for detector %i' % (self.detector))
+    def plot_corner(self, bins = 25, region = None, saveon = False, save_name = None):
+        if self.quiet == False:
+            print('Making a corner plot for detector %i' % (self.detector))
         
         az_integ, el_integ = self.get_1D_dist()
 
@@ -417,10 +431,12 @@ class macana_plotter:
             if self.close_fig == True:
                 plt.close()        
         
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
 
     def make_mosaic_image(self, maptype = None, region = None, saveon = False, save_name = None):
-        print('Making a mosaic plot of all detectors')
+        if self.quiet == False:
+            print('Making a mosaic plot of all detectors')
         tmp_region = region
         fig = plt.figure(figsize=(8,8))
         nplots = int(np.sqrt(self.workingDetectors) + 1)
@@ -461,7 +477,8 @@ class macana_plotter:
                     print('    >No file location given.  Cannot save figure.')
                 if self.close_fig == True:
                     plt.close()
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
         
         
     def array_click(self, event, param_array):
@@ -473,7 +490,8 @@ class macana_plotter:
             #print('This is detector %d ' % (index[0]))
     
     def plot_array(self, color_param, saveon = False, save_name = None):
-        print('Making a plot of the array')
+        if self.quiet == False:
+            print('Making a plot of the array')
         param_array = {}
         param_array['Bolo Name'] = []
         param_array['Amplitude'] = np.zeros(self.workingDetectors)
@@ -536,10 +554,12 @@ class macana_plotter:
                 print('    >No file location given.  Cannot save figure.')
             if self.close_fig == True:
                 plt.close()
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
         
     def fit_hists(self, bins = 25, saveon = None, save_name = False):
-        print('Plotting histograms of all fit parameters')
+        if self.quiet == False:
+            print('Plotting histograms of all fit parameters')
         param_array = np.zeros([self.workingDetectors, 10])
 
         for i in range(self.workingDetectors):
@@ -575,7 +595,8 @@ class macana_plotter:
                     print('    >No file location given.  Cannot save figure.')
                 if self.close_fig == True:
                     plt.close()
-        print('''------------------------------------------------''')
+        if self.quiet == False:
+            print('''------------------------------------------------''')
 
 
 class beammap_analyzer:
@@ -650,35 +671,58 @@ class beammap_analyzer:
         self.yoffset_err_lim = 1.0
         self.azfwhm_err_lim = 1.0
         self.elfwhm_err_lim = 1.0
+        
+        global plot_type
 
         #Names for plotting.
         self.param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 
         'elfwhm', 'Amplitude Error', 'xoffset Error', 'yoffset Error',
               'azfwhm Error', 'elfwhm Error']
+              
+        self.param_names_units = ['A/<A>', 'x/<x>', 'y/<y>','AZFWHM (arcsec)', 
+        'ELFWHM  (arcsec)', '$\sigma_A$ (Jy/V)', '$\sigma_x$  (arcsec)',
+        '$\sigma_y$  (arcsec)','$\sigma_{AZFWHM}$  (arcsec)', '$\sigma_{ELFWHM}$  (arcsec)']
+        
+        self.param_names_units = ['A/<A>', 'x/<x>', 'y/<y>','AZFWHM/<AZFWHM> (arcsec)', 
+        'ELFWHM/<ELFWHM> (arcsec)', '$\sigma_A$ (Jy/V)', '$\sigma_x$  (arcsec)',
+        '$\sigma_y$  (arcsec)','$\sigma_{AZFWHM}$  (arcsec)', '$\sigma_{ELFWHM}$  (arcsec)']
+
         
         self.nparams = len(self.param_names)
         
         self.selected = False
         self.found = False
     
-    def setup_detector_figs(self, fig_type):
+    def setup_detector_figs(self, fig_type, scalex='None', scaley='None', names = None):
+        if names == None:
+            names = self.param_names_units
+        
+        #if scalex == 'logscale':
+        #    for i in [0,3,4,5,6,7,8,9]:
+        #        names[i] = 'log ' + names[i]
+        
         #Values
         f1 = plt.figure()
         #plt.title('Fit Values vs Detector number for observation %i' % (int(round(ix))))
         
         ax1 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax1.locator_params(axis='x', nbins=5)
         ax1.aname = self.param_names[0]
         
         ax2 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax2.locator_params(axis='x', nbins=5)
         ax2.aname = self.param_names[1]
         
         ax3 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax3.locator_params(axis='x', nbins=5)
         ax3.aname = self.param_names[2]
         
         ax4 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax4.locator_params(axis='x', nbins=5)
         ax4.aname = self.param_names[3]
         
         ax5 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        ax5.locator_params(axis='x', nbins=5)
         ax5.aname = self.param_names[4]
         
         #Errors
@@ -686,112 +730,142 @@ class beammap_analyzer:
         #plt.title('Fit Errors vs Detector number for observation %i' % (int(ix)))
         
         ax6 = plt.subplot2grid(shape=(2,6), loc=(0,0), colspan=2)
+        ax6.locator_params(axis='x', nbins=8)
         ax6.aname = self.param_names[5]
         
         ax7 = plt.subplot2grid((2,6), (0,2), colspan=2)
+        ax7.locator_params(axis='x', nbins=5)
         ax7.aname = self.param_names[6]
         
         ax8 = plt.subplot2grid((2,6), (0,4), colspan=2)
+        ax8.locator_params(axis='x', nbins=5)
         ax8.aname = self.param_names[7]
         
         ax9 = plt.subplot2grid((2,6), (1,1), colspan=2)
+        ax9.locator_params(axis='x', nbins=5)
         ax9.aname = self.param_names[8]
         
         ax10 = plt.subplot2grid((2,6), (1,3), colspan=2)
+        ax10.locator_params(axis='x', nbins=5)
         ax10.aname = self.param_names[9]
         
+        if scalex == 'logscale':
+            
+            ax1.set_xscale('symlog')
+            ax2.set_xscale('symlog')
+            ax3.set_xscale('symlog')
+            ax4.set_xscale('symlog')
+            ax5.set_xscale('symlog')
+            ax6.set_xscale('symlog')
+            ax7.set_xscale('symlog')
+            ax8.set_xscale('symlog')
+            ax9.set_xscale('symlog')
+            ax10.set_xscale('symlog')
+
+        if scaley == 'logscale':
+            ax1.set_yscale('symlog')
+            ax2.set_yscale('symlog')
+            ax3.set_yscale('symlog')
+            ax4.set_yscale('symlog')
+            ax5.set_yscale('symlog')
+            ax6.set_yscale('symlog')
+            ax7.set_yscale('symlog')
+            ax8.set_yscale('symlog')
+            ax9.set_yscale('symlog')
+            ax10.set_yscale('symlog')
+            
         if fig_type == 'obs_line':
-            ax1.set_ylabel('Amplitude')
+            ax1.set_ylabel(names[0])
             ax1.set_xlabel('Detector number')
             
-            ax2.set_ylabel('xoffset')
+            ax2.set_ylabel(names[1])
             ax2.set_xlabel('Detector number')
             
-            ax3.set_ylabel('yoffset')
+            ax3.set_ylabel(names[2])
             ax3.set_xlabel('Detector number')
             
-            ax4.set_ylabel('azfwhm')
+            ax4.set_ylabel(names[3])
             ax4.set_xlabel('Detector number')
             
-            ax5.set_ylabel('elfwhm')
+            ax5.set_ylabel(names[4])
             ax5.set_xlabel('Detector number')
             
-            ax6.set_ylabel('Amplitude error')
+            ax6.set_ylabel(names[5])
             ax6.set_xlabel('Detector number')
             
-            ax7.set_ylabel('xoffset error')
+            ax7.set_ylabel(names[6])
             ax7.set_xlabel('Detector number')
             
-            ax8.set_ylabel('yoffset error')
+            ax8.set_ylabel(names[7])
             ax8.set_xlabel('Detector number')
             
-            ax9.set_ylabel('azfwhm error')
+            ax9.set_ylabel(names[8])
             ax9.set_xlabel('Detector number')
             
-            ax10.set_ylabel('elfwhm error')
+            ax10.set_ylabel(names[9])
             ax10.set_xlabel('Detector number')
             
         if fig_type == 'detec_line':
-            ax1.set_ylabel('Amplitude')
+            ax1.set_ylabel(names[0])
             ax1.set_xlabel('Observation number')
             
-            ax2.set_ylabel('xoffset')
+            ax2.set_ylabel(names[1])
             ax2.set_xlabel('Observation number')
             
-            ax3.set_ylabel('yoffset')
+            ax3.set_ylabel(names[2])
             ax3.set_xlabel('Observation number')
             
-            ax4.set_ylabel('azfwhm')
+            ax4.set_ylabel(names[3])
             ax4.set_xlabel('Observation number')
             
-            ax5.set_ylabel('elfwhm')
+            ax5.set_ylabel(names[4])
             ax5.set_xlabel('Observation number')
             
-            ax6.set_ylabel('Amplitude error')
+            ax6.set_ylabel(names[5])
             ax6.set_xlabel('Observation number')
             
-            ax7.set_ylabel('xoffset error')
+            ax7.set_ylabel(names[6])
             ax7.set_xlabel('Observation number')
             
-            ax8.set_ylabel('yoffset error')
+            ax8.set_ylabel(names[7])
             ax8.set_xlabel('Observation number')
             
-            ax9.set_ylabel('azfwhm error')
+            ax9.set_ylabel(names[8])
             ax9.set_xlabel('Observation number')
             
-            ax10.set_ylabel('elfwhm error')
+            ax10.set_ylabel(names[9])
             ax10.set_xlabel('Observation number')
             
         if fig_type == 'hist':
             ax1.set_ylabel('N')
-            ax1.set_xlabel('Amplitude')
+            ax1.set_xlabel(names[0])
             
             ax2.set_ylabel('N')
-            ax2.set_xlabel('xoffset')
+            ax2.set_xlabel(names[1])
             
             ax3.set_ylabel('N')
-            ax3.set_xlabel('yoffset')
+            ax3.set_xlabel(names[2])
             
             ax4.set_ylabel('N')
-            ax4.set_xlabel('azfwhm')
+            ax4.set_xlabel(names[3])
             
             ax5.set_ylabel('N')
-            ax5.set_xlabel('elfwhm')
+            ax5.set_xlabel(names[4])
             
             ax6.set_ylabel('N')
-            ax6.set_xlabel('Amplitude Error')
+            ax6.set_xlabel(names[5])
             
             ax7.set_ylabel('N')
-            ax7.set_xlabel('xoffset Error')
+            ax7.set_xlabel(names[6])
             
             ax8.set_ylabel('N')
-            ax8.set_xlabel('yoffset Error')
+            ax8.set_xlabel(names[7])
             
             ax9.set_ylabel('N')
-            ax9.set_xlabel('azfwhm error')
+            ax9.set_xlabel(names[8])
             
             ax10.set_ylabel('N')
-            ax10.set_xlabel('elfwhm error')
+            ax10.set_xlabel(names[9])
     
         return f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10
         
@@ -803,7 +877,7 @@ class beammap_analyzer:
         
         if event.button == 1:
             if event.dblclick:
-                global plot_type
+                #global plot_type
                 plot_type = 'obs_line'
                 f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
                 f1.canvas.mpl_connect('button_press_event', self.detector_click)
@@ -818,7 +892,7 @@ class beammap_analyzer:
                 
                 f1.tight_layout()
             
-                #Errors            
+                #Errors
                 ax6.plot(range(self.ndetectors), self.plot_array['Amplitude Error'][:,int(ix)], c='k')
                 ax7.plot(range(self.ndetectors), self.plot_array['xoffset Error'][:,int(ix)], c='k')
                 ax8.plot(range(self.ndetectors), self.plot_array['yoffset Error'][:,int(ix)], c='k')
@@ -829,7 +903,7 @@ class beammap_analyzer:
         
         if event.button == 3:
             if event.dblclick:
-                global plot_type
+                #global plot_type
                 plot_type = 'hist'
                 f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
                 f1.canvas.mpl_connect('button_press_event', self.hist_click)
@@ -895,7 +969,7 @@ class beammap_analyzer:
         
         if event.button == 1:
             if event.dblclick:
-                global plot_type
+                #global plot_type
                 plot_type = 'detec_line'
                 f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
                 f1.canvas.mpl_connect('button_press_event', self.observation_click)
@@ -921,7 +995,7 @@ class beammap_analyzer:
         
         if event.button == 3:
             if event.dblclick:
-                global plot_type
+                #global plot_type
                 plot_type = 'hist'
                 f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=plot_type)
                 f1.canvas.mpl_connect('button_press_event', self.hist_click)
@@ -1040,11 +1114,12 @@ class beammap_analyzer:
         global ix4, iy4
         ix4, iy4 = event.xdata, event.ydata
         
-        print('You selected observation %i which corresponds to %s' %(iy4, self.beammaps[int(round(iy4))]))
-        print('This is detector %i ' % (int(round(ix4))))
+        print('You selected observation %i which corresponds to %s' % (iy4, self.beammaps[int(round(iy4))]))
+        obs = macana_plotter(quiet = True)
+        obs.load_nc(self.beammaps[int(round(iy4))])
+        obs.get_gauss_params(int(round(ix4)))
+        print('This is detector %s ' % (obs.boloname))
 
-        
-    
     #For the figures produced by "obs_click", this outputs the nearest detector
     #number to the clicked point.
     def detector_click(self, event):
@@ -1093,10 +1168,13 @@ class beammap_analyzer:
                 self.param_array['azfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
                 self.param_array['elfwhm Error'] = np.zeros([self.ndetectors, self.beam_num])
                 
+                self.SourceEl = np.zeros(self.beam_num)
+                
                 #Loop through the observations putting the fit values and errors for each detector into the dictionary.
                 for j in range(self.beam_num):
                     obs = macana_plotter(j)
                     obs.load_nc(self.beammaps[j])
+                    #self.SourceEl[j] = np.mean(obs.nc.variables['Data.AztecBackend.SourceEl'][0])
                     for i in range(self.ndetectors):
                         obs.get_gauss_params(detector = i)
                         
@@ -1112,8 +1190,9 @@ class beammap_analyzer:
                         self.param_array['azfwhm Error'][i,j] = obs.azfwhm_err
                         self.param_array['elfwhm Error'][i,j] = obs.elfwhm_err
         
-    def finder(self, values = True, errors = True, exclude = 'bad', recursive = False, print_bad = False):
+    def finder(self, values = True, errors = True, exclude = 'bad', remove_all = False, recursive = False, print_bad = False):
         print('''------------------------------------------------''')
+        print('Finding and removing %s points!' % (exclude))
         print('Don''t forget to set the limits!  Current limits are set to: \n')
         print('%s %.3f' % ('Amplitude limit:', self.amp_lim))
         print('%s %7.3f' % ('Xoffset limit:', self.xoffset_lim))
@@ -1121,11 +1200,11 @@ class beammap_analyzer:
         print('%s %8.3f' % ('Azfwhm limit:', self.azfwhm_lim))
         print('%s %8.3f \n' % ('Elfwhm limit:', self.elfwhm_lim))
         
-        print('%s %.3f' % ('Amplitude error limit:', self.amp_err_lim))
+        print('%s %.5f' % ('Amplitude error limit:', self.amp_err_lim))
         print('%s %7.3f' % ('Xoffset error limit:', self.xoffset_err_lim))
         print('%s %7.3f' % ('Yoffset error limit:', self.yoffset_err_lim))
         print('%s %8.3f' % ('Azfwhm error limit:', self.azfwhm_err_lim))
-        print('%s %8.3f' % ('Elfwhm error limit:', self.elfwhm_err_lim))
+        print('%s %8.3f\n\n' % ('Elfwhm error limit:', self.elfwhm_err_lim))
         
         lim_array = np.array([self.amp_lim, self.xoffset_lim, self.yoffset_lim, 
                               self.azfwhm_lim, self.elfwhm_lim, self.amp_err_lim, 
@@ -1135,39 +1214,57 @@ class beammap_analyzer:
         if recursive == False:
             self.bad_array = copy.deepcopy(self.param_array)
             if 'bad_array' not in dir(self):
-                print('cannot do recursive. Have you run finder once yet?')
+                print('Cannot do recursively. Have you run finder once yet?')
         
+        nrows = np.zeros(self.nparams)
         for i in range(self.nparams):
             if exclude == 'bad':
                 rows, cols = np.where(abs(self.param_array[self.param_names[i]]) > lim_array[i])
             elif exclude == 'good':
                 rows, cols = np.where(abs(self.param_array[self.param_names[i]]) <= lim_array[i])
+            nrows[i] = len(rows)/(self.ndetectors*self.beam_num)*100.
             for j in range(len(rows)):
-                self.bad_array[self.param_names[i]][rows[j], cols[j]] = np.inf
+                if remove_all == False:
+                    self.bad_array[self.param_names[i]][rows[j], cols[j]] = np.inf
+                elif remove_all == True:
+                    for k in range(self.nparams):
+                        self.bad_array[self.param_names[k]][rows[j], cols[j]] = np.inf
                 if print_bad == True:
                     print('Beammap: %s ' % (self.beammaps[cols[j]]))
                     print('   >Detector: %s ' % (rows[j]))
         
+        print('Percentage of %s points removed from each parameter:\n' % (exclude))
+        nremoved = 0
+        for i in range(self.nparams):
+            print('%s: %.3f%%' % (self.param_names[i], nrows[i]))
+            if i == int(self.nparams/2-1):
+                print('\n')
+            rows, cols = np.where(self.bad_array[self.param_names[i]] == np.inf)
+            nremoved = nremoved + len(rows)
+        
+        percent_removed = nremoved/(self.nparams*self.ndetectors*self.beam_num)*100.
+        print('\nTotal percentage of points removed = %f%%' % (percent_removed))        
+        
         return self.bad_array           
                     
-    def excluder(self,exclude):
+    def excluder(self,exclude, remove_all = False):
         if exclude == 'None':
             return self.param_array
             
         elif exclude == 'bad':
-            return self.finder(values = True, errors = True, exclude = 'bad', print_bad = False)      
+            return self.finder(values = True, errors = True, exclude = 'bad',remove_all=remove_all, print_bad = False)      
         
         elif exclude == 'good':
-            return self.finder(values = True, errors = True, exclude = 'good', print_bad = False)      
+            return self.finder(values = True, errors = True, exclude = 'good', remove_all=remove_all, print_bad = False)      
      
-    def plot_obs(self, fig_type = 'obs', plot_types = 'scatter', exclude = None, bins = 25):
+    def plot_obs(self, fig_type = 'obs', plot_types = 'scatter', exclude = None, bins = 25, scalex = 'None', scaley = 'None', remove_all = False):
         #Plots the fit values and errors against the observation number.  
         #Each figure is slightly interactive in that one can click on an 
         #observation to open up additional figures for that observation.  See intro.
         
         cmap = plt.cm.plasma
         
-        self.plot_array = self.excluder(exclude)
+        self.plot_array = self.excluder(exclude, remove_all)
                 
         if fig_type == 'obs':
             norm = mpl.colors.Normalize(0.0, self.ndetectors) 
@@ -1241,11 +1338,36 @@ class beammap_analyzer:
                 plt.axis('tight')
         
         elif fig_type == 'hist':
+            
+            for i in range(self.ndetectors):
+                s0 = np.array(self.plot_array['Amplitude'][i,:])
+                s0[np.where(s0!=np.inf)] = s0[np.where(s0!=np.inf)]/np.mean(s0[np.where(s0!=np.inf)])
+                
+                s = np.array(self.plot_array['xoffset'][i,:])
+                s[np.where(s!=np.inf)] = s[np.where(s!=np.inf)]/np.mean(s[np.where(s!=np.inf)])
+                
+                s2 = np.array(self.plot_array['yoffset'][i,:])
+                s2[np.where(s2!=np.inf)] = s2[np.where(s2!=np.inf)]/np.mean(s2[np.where(s2!=np.inf)])
+                
+                s3 = np.array(self.plot_array['azfwhm'][i,:])
+                s3[np.where(s3!=np.inf)] = s3[np.where(s3!=np.inf)]/np.mean(s3[np.where(s3!=np.inf)])
+                
+                s4 = np.array(self.plot_array['elfwhm'][i,:])
+                s4[np.where(s4!=np.inf)] = s4[np.where(s4!=np.inf)]/np.mean(s4[np.where(s4!=np.inf)])
+
+                self.plot_array['Amplitude'][i,:] = s0
+                self.plot_array['xoffset'][i,:] = s
+                self.plot_array['yoffset'][i,:] = s2
+                self.plot_array['azfwhm'][i,:] = s3
+                self.plot_array['elfwhm'][i,:] = s4
+
             params_ravel = {}
             for i in range(self.nparams):
                 params_ravel[self.param_names[i]] = np.ravel(self.plot_array[self.param_names[i]])
+                params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(params_ravel[self.param_names[i]]==params_ravel[self.param_names[i]])]
                 params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(params_ravel[self.param_names[i]]!=np.inf)]
-            f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=fig_type)
+
+            f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.setup_detector_figs(fig_type=fig_type,scalex=scalex,scaley=scaley)
             f1.canvas.mpl_connect('button_press_event', self.hist_click)
             f2.canvas.mpl_connect('button_press_event', self.hist_click)
             
@@ -1289,14 +1411,557 @@ class beammap_analyzer:
                 ax.set_xlabel('Observation')
                 ax.set_ylabel('Detector')
                 f.colorbar(img, ax = ax, label = self.param_names[i])
-            
+
         plt.show()
 
-plt.close('all')
-beam = beammap_analyzer()
-beam.get_files('/Users/quirkyneku/Documents/TolTEC-Project/beammaps_out/')
-beam.load()#'/Users/quirkyneku/Documents/macana_python_plotting/fit_array.npy')
-beam.finder(print_bad = False)
-beam.plot_obs(fig_type = 'imshow', plot_types = 'scatter', bins=50, exclude = 'bad')
 
+class idl_compare:
+    def __init__(self):
+        print('Welcome to idl_compare!')
+        
+        #Number of detectors is hardcoded for now.
+        self.ndetectors = 113
+        self.fecGain = 133.2
+        self.rad_to_arcsec = 1.#3600.#(180.*3600)/np.pi
+
+        #Names for plotting.
+        self.param_names = ['Amplitude', 'xoffset', 'yoffset', 'azfwhm', 
+        'elfwhm', 'Amplitude Error', 'xoffset Error', 'yoffset Error',
+              'azfwhm Error', 'elfwhm Error']
+        
+        self.param_names_units = ['A (V)', 'x (arcsec)', 'y (arcsec)',
+        'AZFWHM (arcsec)', 'ELFWHM  (arcsec)', '$\sigma_A$ (V)', '$\sigma_x$  (arcsec)',
+        '$\sigma_y$  (arcsec)','$\sigma_{AZFWHM}$  (arcsec)', '$\sigma_{ELFWHM}$  (arcsec)']
+        
+        '''
+        self.param_names_units = ['A/<A>', 'x/<x>', 'y/<y>','AZFWHM/<AZFWHM> (arcsec)', 
+        'ELFWHM/<ELFWHM> (arcsec)', '$\sigma_A$ (V)', '$\sigma_x$  (arcsec)',
+        '$\sigma_y$  (arcsec)','$\sigma_{AZFWHM}$  (arcsec)', '$\sigma_{ELFWHM}$  (arcsec)']
+        '''
+        self.nparams = len(self.param_names)
+
+        self.selected = False
+        
+        self.amp_lim = 1.0
+        self.xoffset_lim = 120.0
+        self.yoffset_lim = 120.0
+        self.azfwhm_lim = 20.0
+        self.elfwhm_lim = 20.0
+        
+        self.amp_err_lim = 10.0
+        self.xoffset_err_lim = 1.0
+        self.yoffset_err_lim = 1.0
+        self.azfwhm_err_lim = 10.0
+        self.elfwhm_err_lim = 10.0
+        
+        self.limits = [self.amp_lim,self.xoffset_lim,self.yoffset_lim,
+                       self.azfwhm_lim,self.elfwhm_lim,self.amp_err_lim,
+                       self.xoffset_err_lim,self.yoffset_err_lim,
+                       self.azfwhm_err_lim,self.elfwhm_err_lim]
+
+    def hist_click(self,event):
+        global ix3, iy3, iinaxes3
+        ix3, iy3, iinaxes3 = event.xdata, event.ydata, event.inaxes
+        
+        print('''------------------------------------------------''')
+        print('You selected %s = %f' % (iinaxes3.aname, ix3))
+
+        if 'ix' in globals():
+            if event.dblclick:
+                rows, bin_width, lower_bin, upper_bin = self.find_on_hist()
+                rows = rows[0]
+                if self.selected:
+                    self.R.remove()
+                self.R = iinaxes3.add_artist(Rectangle((lower_bin,0),width=bin_width,
+                    height=len(rows), color='r'))
+                self.selected = True
+                plt.draw()
+                print('Beammap: %s ' % (self.idl_beams[int(round(ix))]))
+                for i in range(len(rows)):
+                    print('   >Detector: %s ' % (rows[i]))
+        else:
+            if event.dblclick:
+                rows, cols, bin_width, lower_bin, upper_bin = self.find_on_hist()
+                if self.selected:
+                    self.R.remove()
+                self.R = iinaxes3.add_artist(Rectangle((lower_bin,0),width=bin_width,
+                    height=len(rows), color='r'))
+                self.selected = True
+                plt.draw()
+                cols, rows = zip(*sorted(zip(cols, rows)))
+                for i in range(len(rows)):
+                    print('''------------------------------------------------''')
+                    print('Beammap: %s ' % (self.idl_beams[cols[i]]))
+                    print('   >Detector: %s ' % (rows[i]))
+    
+    def find_on_hist(self):
+        bin_edges = bins_dict[iinaxes3.aname]
+        bin_width = bin_edges[1] - bin_edges[0]
+        index = np.where(abs(bin_edges - ix3) == min(abs(bin_edges - ix3)))
+        closest_bin = bin_edges[index[0]]
+        if closest_bin > ix3:
+            upper_bin = closest_bin
+            lower_bin = bin_edges[index[0]-1]
+            
+        elif closest_bin < ix3:
+            upper_bin = bin_edges[index[0]+1]
+            lower_bin = closest_bin
+                
+        bin_mid = np.mean([lower_bin, upper_bin])
+                
+        if 'ix' in globals():
+            rows = np.where(abs(self.plot_array[iinaxes3.aname][:,int(round(ix))] - bin_mid) < bin_width/2.0)
+            return rows, bin_width, lower_bin, upper_bin
+        else:
+            rows, cols = np.where(abs(self.plot_array[iinaxes3.aname] - bin_mid) < bin_width/2.0)
+            return rows, cols, bin_width, lower_bin, upper_bin
+             
+    def get_files(self,path):
+        self.idl_beams = glob.glob(path + '/*')
+        self.idl_beams.sort()
+        self.idl_num = len(self.idl_beams)
+            
+    def load(self, npy_file = None, find_bad = False):
+            if type(npy_file) == str:
+                self.param_array = np.load(npy_file, encoding = 'latin1').item()
+                self.idl_num = len(self.param_array['Amplitude'][0,:])
+
+            else:
+                #Setting up the dictionary.  Dimensions are number of detectors by number of obseravations.
+                self.param_array = {}
+                self.param_array['Amplitude'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['xoffset'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['yoffset'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['azfwhm'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['elfwhm'] = np.zeros([self.ndetectors, self.idl_num])
+                
+                self.param_array['Amplitude Error'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['xoffset Error'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['yoffset Error'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['azfwhm Error'] = np.zeros([self.ndetectors, self.idl_num])
+                self.param_array['elfwhm Error'] = np.zeros([self.ndetectors, self.idl_num])
+                
+                #Loop through the observations putting the fit values and errors for each detector into the dictionary.
+                for j in range(self.idl_num):
+                    print('Opening file %i/%i' % (j+1, self.idl_num))
+                    u = readsav(self.idl_beams[j])
+                    for i in range(self.ndetectors):
+                        #Match units for macana in amplitude and amplitude error
+                        amp = u.offsets[i]['calibrator_flux'] * u.offsets[i]['responsivity'] * self.fecGain * 1000 / (u.offsets[i]['fcf'] * u.offsets[i]['extinction'])
+                        amp_err = np.sqrt(((u.offsets[i]['fcf_err']/-u.offsets[i]['fcf'])**2 - 
+                                  (u.offsets[i]['calibrator_flux_err']/u.offsets[i]['calibrator_flux'])**2. - 
+                                  (u.offsets[i]['extinction_err']/u.offsets[i]['extinction'])**2 -
+                                  (u.offsets[i]['responsivity_err']/u.offsets[i]['responsivity'])**2.)*amp**2)
+                        
+                        self.param_array['Amplitude'][i,j] = abs(amp)
+                        self.param_array['azfwhm'][i,j] = u.offsets[i]['az_beamsize']#*self.rad_to_arcsec
+                        self.param_array['elfwhm'][i,j] = u.offsets[i]['el_beamsize']#*self.rad_to_arcsec
+                        self.param_array['xoffset'][i,j] = u.offsets[i]['az_offset']*self.rad_to_arcsec
+                        self.param_array['yoffset'][i,j] = u.offsets[i]['el_offset']*self.rad_to_arcsec
+                        
+                        self.param_array['Amplitude Error'][i,j] = amp_err * self.fecGain * 1000
+                        self.param_array['azfwhm Error'][i,j] = u.offsets[i]['az_beamsize_err']#*self.rad_to_arcsec
+                        self.param_array['elfwhm Error'][i,j] = u.offsets[i]['el_beamsize_err']# *self.rad_to_arcsec
+                        self.param_array['xoffset Error'][i,j] = u.offsets[i]['az_offset_err']*self.rad_to_arcsec
+                        self.param_array['yoffset Error'][i,j] = u.offsets[i]['el_offset_err']*self.rad_to_arcsec
+            
+            #Set bad values to infinity to match macana
+            for i in range(self.nparams):
+                rows, cols = np.where(self.param_array[self.param_names[i]] == 9999.0)
+                for j in range(len(rows)):
+                    self.param_array[self.param_names[i]][rows[i], cols[i]] = np.inf
+        
+    def get_macana(self, macana_path, derotate = False):
+        self.macana = beammap_analyzer()
+        self.macana.get_files(macana_path)
+        self.macana.load()
+        
+        self.SourceEl = np.array([ 
+        0.73927265,  0.92775818,  0.88516823,  0.83871966,  0.78953917,
+        0.73784434,  0.68311661,  0.73787409,  0.91802435,  1.20393323,
+        1.32959402,  1.39214194,  1.25378727,  1.16543041,  1.02368999,
+        0.87025858,  0.72914073,  1.20053374,  0.72484988,  0.79536879,
+        1.02085873,  1.22138436,  0.8925339 ,  0.59501468,  0.78104031,
+        1.19046327,  0.94232105,  1.0613094 ,  1.06550431,  1.19012739,
+        0.87111917,  1.15179693,  1.06549109,  0.96341086,  1.00198855,
+        1.06744059,  1.0922152 ,  1.04647556,  1.18053722,  1.25497022,
+        1.08269981,  1.0451878 ,  0.96313827,  0.86111891,  0.96997695,
+        1.26611815,  0.53128059,  0.94878644,  0.98340976,  0.87237281,
+        0.96654785,  0.78586078,  1.22091096,  0.78011641,  1.14561841,
+        0.80095859,  1.23391045,  0.76244468,  0.86945109,  1.20312563,
+        0.81107157,  0.91230733,  1.1606765 ,  0.85193985,  0.83044213,
+        1.17758417,  1.04904363,  1.23226682,  0.94147078,  1.22736813,
+        1.16388437,  1.22027468,  1.12806746,  0.76347844,  1.13735568,
+        1.22129994,  1.22748655,  0.93084415,  0.91809427,  1.18621636,
+        0.60486577,  0.9718587 ,  0.83474553,  1.19856688,  0.93835192,
+        1.24494395,  0.69608222,  1.27783949,  0.92294814,  1.31071963,
+        0.79200739,  1.10670969,  0.71449501,  1.21978658,  1.22195178,
+        0.72587179,  0.64172117,  0.72223873,  1.20656078,  0.96988069,
+        0.72889074,  1.01668743,  0.98697289,  1.09960323,  0.76086259,
+        0.7547728 ,  1.02330575,  1.06534648,  0.36374482,  0.82203796,
+        1.26853143,  1.0986047 ,  1.15501344,  0.81223486,  1.19931858,
+        0.67918402,  0.855427  ,  0.97606564,  1.04435723,  1.3265183 ,
+        1.24464739,  1.39639149,  1.08510407,  0.76673914,  0.49145688,
+        0.89302279,  1.12895402,  1.26680781,  0.53142047,  1.16036021,
+        1.15602745,  1.26358933,  1.18216341,  0.69639653,  0.89531082,
+        0.72869195,  0.89110746,  0.60445527,  1.20902843,  1.28371963,
+        0.85323602,  1.25881028,  0.52000705,  1.41126561,  1.07855486,
+        1.12338646,  0.92012481,  0.68678988,  0.64449853,  0.45275284,
+        0.37611981,  0.76774719,  0.93644068,  1.16921081,  0.7354667 ,
+        1.16214187,  0.46798767,  1.44687008,  0.64815581,  0.46167195,
+        0.76342042,  0.9189869 ,  0.9841499 ,  1.27122453,  1.10405496,
+        0.87517409,  1.17420856,  1.29727076,  1.05441146,  1.07453764,
+        0.60644479,  1.26630036,  1.13990882,  1.23342838,  1.25792846,
+        1.22443516,  0.98492525,  1.26944269,  0.76811051,  1.20515695,
+        0.78577092,  1.00621029,  1.16358992,  0.51682156,  1.22991427,
+        1.0970769 ,  0.77037641,  1.12361372,  0.7222557 ,  1.10326543,
+        0.55234363,  0.80110341,  0.90053466,  1.11358787,  0.97388161,
+        0.98790459,  0.83466446,  1.26138605,  0.86232007,  0.74273042,
+        1.02231267,  0.65160298,  1.23587631,  0.72109345,  0.50411085,
+        0.83847008,  0.81208972,  1.02716357,  1.11439367,  0.98532841,
+        0.89231405,  1.19250582,  0.79454149,  1.07038522,  1.20509568,
+        1.17157447])
+        
+        if derotate == True:
+            self.blah = {}
+            self.blah['xoffset'] = np.zeros([self.ndetectors, self.idl_num])
+            self.blah['yoffset'] = np.zeros([self.ndetectors, self.idl_num])
+    
+            arcsec_to_rad = np.pi/(180.*3600)
+            for i in range(self.idl_num):
+                self.blah['xoffset'][:,i] = np.cos(self.SourceEl[i])*self.macana.param_array['xoffset'][:,i]-np.sin(self.SourceEl[i])*self.macana.param_array['yoffset'][:,i]
+                self.blah['yoffset'][:,i] = np.cos(self.SourceEl[i])*self.macana.param_array['yoffset'][:,i]+np.sin(self.SourceEl[i])*self.macana.param_array['xoffset'][:,i]
+            
+            self.macana.param_array['xoffset'] = self.blah['xoffset']
+            self.macana.param_array['yoffset'] = self.blah['yoffset']
+        
+        #Difference array
+        self.diff_array = {}
+        
+        self.diff_array['Amplitude'] = self.macana.param_array['Amplitude'] - self.param_array['Amplitude']
+        self.diff_array['xoffset'] = self.macana.param_array['xoffset'] - self.param_array['xoffset']
+        self.diff_array['yoffset'] = self.macana.param_array['yoffset'] - self.param_array['yoffset']
+        self.diff_array['azfwhm'] = self.macana.param_array['azfwhm'] - self.param_array['azfwhm']
+        self.diff_array['elfwhm'] = self.macana.param_array['elfwhm'] - self.param_array['elfwhm']
+        self.diff_array['Amplitude Error'] = self.macana.param_array['Amplitude Error'] - self.param_array['Amplitude Error']
+        self.diff_array['xoffset Error'] = self.macana.param_array['xoffset Error'] - self.param_array['xoffset Error']
+        self.diff_array['yoffset Error'] = self.macana.param_array['yoffset Error'] - self.param_array['yoffset Error']
+        self.diff_array['azfwhm Error'] = self.macana.param_array['azfwhm Error'] - self.param_array['azfwhm Error']
+        self.diff_array['elfwhm Error'] = self.macana.param_array['elfwhm Error'] - self.param_array['elfwhm Error']
+    
+    def compare_hists(self, bins=25, scalex = 'None', scaley = 'logscale', exclude = 'None', remove_all = False):     
+        params_ravel = {}
+        for i in range(self.nparams):
+            macana_ravel = np.ravel(self.macana.param_array[self.param_names[i]])
+            idl_ravel = np.ravel(self.param_array[self.param_names[i]])
+            params_ravel[self.param_names[i]] = macana_ravel - idl_ravel
+            params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(params_ravel[self.param_names[i]] == params_ravel[self.param_names[i]])]
+            params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(abs(params_ravel[self.param_names[i]]) != np.inf)]
+        
+        if exclude == 'bad':
+            for i in range(self.nparams):
+                print(len(params_ravel[self.param_names[i]][np.where(abs(params_ravel[self.param_names[i]]) <= self.limits[i])])/(self.idl_num*self.ndetectors))
+                if remove_all == True:
+                    for j in range(self.nparams):
+                        params_ravel[self.param_names[j]] = params_ravel[self.param_names[j]][np.where(abs(params_ravel[self.param_names[i]]) <= self.limits[i])]
+                else:
+                    params_ravel[self.param_names[i]] = params_ravel[self.param_names[i]][np.where(abs(params_ravel[self.param_names[i]]) <= self.limits[i])]
+
+        f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.macana.setup_detector_figs(fig_type='hist', scalex = scalex, scaley = scaley, names = self.param_names_units)
+        f1.canvas.mpl_connect('button_press_event', self.hist_click)
+        f2.canvas.mpl_connect('button_press_event', self.hist_click)
+        
+        #Values 
+        n1, b1, _ = ax1.hist(params_ravel['Amplitude'], bins = bins, color='k', histtype = 'step')
+        n2, b2, _ = ax2.hist(params_ravel['xoffset'], bins = bins, color='k', histtype = 'step')
+        n3, b3, _ = ax3.hist(params_ravel['yoffset'], bins = bins, color='k', histtype = 'step')
+        n4, b4, _ = ax4.hist(params_ravel['azfwhm'], bins = bins, color='k', histtype = 'step')
+        n5, b5, _ = ax5.hist(params_ravel['elfwhm'], bins = bins, color='k', histtype = 'step')
+
+        f1.tight_layout()
+        
+        #Errors            
+        n6, b6, _ = ax6.hist(params_ravel['Amplitude Error'], bins = bins, color='k', histtype = 'step')
+        n7, b7, _ = ax7.hist(params_ravel['xoffset Error'], bins = bins, color='k', histtype = 'step')
+        n8, b8, _ = ax8.hist(params_ravel['yoffset Error'], bins = bins, color='k', histtype = 'step')
+        n9, b9, _ = ax9.hist(params_ravel['azfwhm Error'], bins = bins, color='k', histtype = 'step')
+        n10, b10, _ = ax10.hist(params_ravel['elfwhm Error'], bins = bins, color='k', histtype = 'step')
+    
+        f2.tight_layout()
+            
+        global bins_dict 
+        bins_dict = {}
+        bins_dict[self.param_names[0]] = b1
+        bins_dict[self.param_names[1]] = b2
+        bins_dict[self.param_names[2]] = b3
+        bins_dict[self.param_names[3]] = b4
+        bins_dict[self.param_names[4]] = b5
+        bins_dict[self.param_names[5]] = b6
+        bins_dict[self.param_names[6]] = b7
+        bins_dict[self.param_names[7]] = b8
+        bins_dict[self.param_names[8]] = b9
+        bins_dict[self.param_names[9]] = b10
+    
+    def separate_hists(self, bins=25, exclude_idl='bad', exclude_macana = 'bad', remove_all = True, fig_type='hist',scalex='None',scaley='logscale', density=False):
+        '''
+        for i in range(self.ndetectors):
+            s0 = np.array(self.param_array['Amplitude'][i,:])
+            s0[np.where(s0!=np.inf)] = s0[np.where(s0!=np.inf)]/np.mean(s0[np.where(s0!=np.inf)])
+            
+            s = np.array(self.param_array['xoffset'][i,:])
+            s[np.where(s!=np.inf)] = s[np.where(s!=np.inf)]/np.mean(s[np.where(s!=np.inf)])
+            
+            s2 = np.array(self.param_array['yoffset'][i,:])
+            s2[np.where(s2!=np.inf)] = s2[np.where(s2!=np.inf)]/np.mean(s2[np.where(s2!=np.inf)])
+            
+            s3 = np.array(self.param_array['azfwhm'][i,:])
+            s3[np.where(s3!=np.inf)] = s3[np.where(s3!=np.inf)]/np.mean(s3[np.where(s3!=np.inf)])
+            
+            s4 = np.array(self.param_array['elfwhm'][i,:])
+            s4[np.where(s4!=np.inf)] = s4[np.where(s4!=np.inf)]/np.mean(s4[np.where(s4!=np.inf)])
+    
+            self.param_array['Amplitude'][i,:] = s0
+            self.param_array['xoffset'][i,:] = s
+            self.param_array['yoffset'][i,:] = s2
+            self.param_array['azfwhm'][i,:] = s3
+            self.param_array['elfwhm'][i,:] = s4
+        
+        for i in range(self.ndetectors):
+            s0 = np.array(self.macana.param_array['Amplitude'][i,:])
+            s0[np.where(s0!=np.inf)] = s0[np.where(s0!=np.inf)]/np.mean(s0[np.where(s0!=np.inf)])
+            
+            s = np.array(self.macana.param_array['xoffset'][i,:])
+            s[np.where(s!=np.inf)] = s[np.where(s!=np.inf)]/np.mean(s[np.where(s!=np.inf)])
+            
+            s2 = np.array(self.macana.param_array['yoffset'][i,:])
+            s2[np.where(s2!=np.inf)] = s2[np.where(s2!=np.inf)]/np.mean(s2[np.where(s2!=np.inf)])
+            
+            s3 = np.array(self.macana.param_array['azfwhm'][i,:])
+            s3[np.where(s3!=np.inf)] = s3[np.where(s3!=np.inf)]/np.mean(s3[np.where(s3!=np.inf)])
+            
+            s4 = np.array(self.macana.param_array['elfwhm'][i,:])
+            s4[np.where(s4!=np.inf)] = s4[np.where(s4!=np.inf)]/np.mean(s4[np.where(s4!=np.inf)])
+
+            self.macana.param_array['Amplitude'][i,:] = s0
+            self.macana.param_array['xoffset'][i,:] = s
+            self.macana.param_array['yoffset'][i,:] = s2
+            self.macana.param_array['azfwhm'][i,:] = s3
+            self.macana.param_array['elfwhm'][i,:] = s4
+        '''
+        macana_ravel = {}
+        idl_ravel = {}
+        for i in range(self.nparams):
+            macana_ravel[self.param_names[i]] = np.ravel(self.macana.param_array[self.param_names[i]])
+            idl_ravel[self.param_names[i]] = np.ravel(self.param_array[self.param_names[i]])
+        
+        if exclude_idl == 'bad':
+            for i in range(self.nparams):
+                print(len(idl_ravel[self.param_names[i]][np.where(abs(idl_ravel[self.param_names[i]]) <= self.limits[i])])/(self.idl_num*self.ndetectors))
+                if remove_all == True:
+                    for j in range(self.nparams):
+                        macana_ravel[self.param_names[j]] = macana_ravel[self.param_names[j]][np.where(abs(idl_ravel[self.param_names[i]]) <= self.limits[i])]
+                        idl_ravel[self.param_names[j]] = idl_ravel[self.param_names[j]][np.where(abs(idl_ravel[self.param_names[i]]) <= self.limits[i])]
+                else:
+                    macana_ravel[self.param_names[i]] = macana_ravel[self.param_names[i]][np.where(abs(idl_ravel[self.param_names[i]]) <= self.limits[i])]
+                    idl_ravel[self.param_names[i]] = idl_ravel[self.param_names[i]][np.where(abs(idl_ravel[self.param_names[i]]) <= self.limits[i])]
+
+        if exclude_macana == 'bad':
+            for i in range(self.nparams):
+                print(len(idl_ravel[self.param_names[i]][np.where(abs(macana_ravel[self.param_names[i]]) <= self.limits[i])])/(self.idl_num*self.ndetectors))
+                if remove_all == True:
+                    for j in range(self.nparams):
+                        idl_ravel[self.param_names[j]] = idl_ravel[self.param_names[j]][np.where(abs(macana_ravel[self.param_names[i]]) <= self.limits[i])]
+                        macana_ravel[self.param_names[j]] = macana_ravel[self.param_names[j]][np.where(abs(macana_ravel[self.param_names[i]]) <= self.limits[i])]
+
+                else:
+                    idl_ravel[self.param_names[i]] = idl_ravel[self.param_names[i]][np.where(abs(macana_ravel[self.param_names[i]]) <= self.limits[i])]
+                    macana_ravel[self.param_names[i]] = macana_ravel[self.param_names[i]][np.where(abs(macana_ravel[self.param_names[i]]) <= self.limits[i])]
+
+
+            f1, f2, ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9, ax10 = self.macana.setup_detector_figs(fig_type='hist', scalex = scalex, scaley = scaley, names = self.param_names_units)
+            f1.canvas.mpl_connect('button_press_event', self.hist_click)
+            f2.canvas.mpl_connect('button_press_event', self.hist_click)
+            
+            #Values 
+            n1, b1, _ = ax1.hist(macana_ravel['Amplitude'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n2, b2, _ = ax2.hist(macana_ravel['xoffset'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n3, b3, _ = ax3.hist(macana_ravel['yoffset'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n4, b4, _ = ax4.hist(macana_ravel['azfwhm'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n5, b5, _ = ax5.hist(macana_ravel['elfwhm'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+
+            n1, b1, _ = ax1.hist(idl_ravel['Amplitude'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n2, b2, _ = ax2.hist(idl_ravel['xoffset'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n3, b3, _ = ax3.hist(idl_ravel['yoffset'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n4, b4, _ = ax4.hist(idl_ravel['azfwhm'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n5, b5, _ = ax5.hist(idl_ravel['elfwhm'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            
+            f1.tight_layout()
+            
+            #Errors         
+            n6, b6, _ = ax6.hist(macana_ravel['Amplitude Error'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n7, b7, _ = ax7.hist(macana_ravel['xoffset Error'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n8, b8, _ = ax8.hist(macana_ravel['yoffset Error'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n9, b9, _ = ax9.hist(macana_ravel['azfwhm Error'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+            n10, b10, _ = ax10.hist(macana_ravel['elfwhm Error'], bins = bins, color='r', histtype = 'stepfilled', alpha=0.5, density=density)
+        
+                          
+            n6, b6, _ = ax6.hist(idl_ravel['Amplitude Error'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n7, b7, _ = ax7.hist(idl_ravel['xoffset Error'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n8, b8, _ = ax8.hist(idl_ravel['yoffset Error'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n9, b9, _ = ax9.hist(idl_ravel['azfwhm Error'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+            n10, b10, _ = ax10.hist(idl_ravel['elfwhm Error'], bins = bins, color='g', histtype = 'stepfilled', alpha=0.5, density=density)
+
+            f2.tight_layout()
+
+            global bins_dict 
+            bins_dict = {}
+            bins_dict[self.param_names[0]] = b1
+            bins_dict[self.param_names[1]] = b2
+            bins_dict[self.param_names[2]] = b3
+            bins_dict[self.param_names[3]] = b4
+            bins_dict[self.param_names[4]] = b5
+            bins_dict[self.param_names[5]] = b6
+            bins_dict[self.param_names[6]] = b7
+            bins_dict[self.param_names[7]] = b8
+            bins_dict[self.param_names[8]] = b9
+            bins_dict[self.param_names[9]] = b10
+    
+    def get_bad(self):
+        self.bad_beams = []
+        for i in range(0,self.nparams):
+            for j in range(self.idl_num):
+                for k in range(self.ndetectors):
+                    if self.param_array[self.param_names[i]][k,j] > self.limits[i]:
+                        if j not in self.bad_beams:
+                            self.bad_beams.append(j)
+                            print('idl', i, j, k, self.param_array[self.param_names[i]][k,j])
+                    if self.macana.param_array[self.param_names[i]][k,j] > self.limits[i]:
+                        if j not in self.bad_beams:
+                            self.bad_beams.append(j)
+                            print('macana', i, j, k, self.macana.param_array[self.param_names[i]][k,j])
+
+        
+    def plot_beammaps(self, beam_index, detector_index):
+        f1 = plt.figure()
+        #plt.title('Fit Values vs Detector number for observation %i' % (int(round(ix))))
+        
+        ax1 = plt.subplot2grid(shape=(1,2), loc=(0,0), colspan=1)
+        ax1.locator_params(axis='x', nbins=5)
+        ax1.aname = idl.param_names[0]
+        
+        ax2 = plt.subplot2grid((1,2), (0,1), colspan=2)
+        ax2.locator_params(axis='x', nbins=5)
+        ax2.aname = idl.param_names[1]
+        
+        macana_beams = glob.glob('/Users/quirkyneku/Documents/TolTEC-Project/beammaps_out/*')
+        macana_beams = np.sort(macana_beams)
+        
+        s = self.idl_beams[beam_index]
+        
+        print('IDL map ' + s)
+        print('Macana map ' + macana_beams[beam_index])
+
+        u = readsav(s)
+        nc = netCDF4.Dataset(macana_beams[beam_index])
+
+        #coordinate standardization
+        pixelSize = 1.5
+        az = u.az_map[0]
+        az = az / (az[1] - az[0])
+        az = az * pixelSize
+        
+        '''
+        el = []
+        for i in range(0, len(u.el_map)):
+            el.append(u.el_map[i][0])
+            el = el / (el[1] - el[0])
+            el = el * pixelSize
+        '''
+        m = u.mapstruct[detector_index]
+        matrixIDL = np.array(m[0])
+        
+        row = nc.variables['rowCoordsPhys'][:]*self.rad_to_arcsec
+        col = nc.variables['colCoordsPhys'][:]*self.rad_to_arcsec
+        
+        nrows = len(row)
+        ncols = len(col)
+        
+        ax1.imshow(matrixIDL,  extent=[row.min(), row.max(), col.min(), col.max()])
+        ax1.set_xlabel('Az (arcsec)')
+        ax1.set_ylabel('El (arcsec)')
+        ax1.set_title('IDL')
+        
+        var = 'beammapSignal' + str(detector_index)
+        matrix = np.array(nc.variables[var])
+    
+        #extent = [row.min(), row.max(), col.min(), col.max()]
+        
+        '''for i in range(nrows):
+            for j in range(ncols):
+                if matrix[i,j] != matrix[i,j]:
+                    matrix[i,j]  = 0.0
+                    '''
+        matrix_rot = np.rot90(matrix[:])
+        
+        ax2.imshow(matrix_rot, extent=[row.min(), row.max(), col.min(), col.max()])
+        ax2.set_xlabel('Az (arcsec)')
+        ax2.set_ylabel('El (arcsec)')
+        ax2.set_title('Macana')
+        
+        f1.tight_layout()
+
+
+#plt.close('all')
+
+#idl = idl_compare()
+#idl.get_files('/Users/mmccrackan/Documents/toltec/idl_dot_sav/')
+#idl.load()
+#idl.get_macana('/Users/mmccrackan/Documents/toltec/nc_out/', derotate = True)
+#idl.get_bad()
+#idl.compare_hists(scaley='logscale', exclude = 'bad')
+#idl.separate_hists()
+#idl.plot_beammaps(idl.bad_beams[0],0)
+
+'''
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import landscape, letter
+from PyPDF2 import PdfFileWriter, PdfFileReader
+
+import os
+
+path = '/Users/quirkyneku/Documents/TolTEC-Project/bad_beams/'
+
+for i in idl.bad_beams:
+    directory = path + str('beammap_' + str(i) + '/')
+    
+    try:
+        os.stat(directory)
+    except:
+        os.mkdir(directory)
+           
+    c = canvas.Canvas(directory + 'test_compile_'+ str(i) + '.pdf')
+    c.setPageSize(landscape(letter))
+    
+    for j in range(idl.ndetectors):
+        idl.plot_beammaps(i,j)
+        plt.savefig(directory + str(i) + '_' + str(j))
+        plt.close('all')
+        name = directory + str(i) + '_' + str(j) + '.png'
+        c.drawImage(name, 0, 0, width=405, height=310)
+    c.showPage()
+    c.save
+
+'''
+'''obs = macana_plotter()
+obs.load_nc('/Users/mmccrackan/Documents/toltec/nc_out/27099beam.nc')
+obs.plot_array('Amplitude')
+
+beam = beammap_analyzer()
+beam.get_files('/Users/mmccrackan/Documents/toltec/nc_out/')
+beam.load()#'/Users/quirkyneku/Documents/macana_python_plotting/fit_array.npy')
+
+beam.finder(print_bad = False, remove_all = False)
+beam.plot_obs(fig_type = 'imshow', plot_types = 'scatter', bins=50, exclude = 'bad', remove_all = False)
+#beam.plot_obs(fig_type = 'hist', bins=25, scaley = 'logscale', exclude = 'bad', remove_all = False)
+'''
 plt.show()
